@@ -211,6 +211,20 @@ export async function getMonthlySummary(month?: string): Promise<MonthlySummary>
   };
 }
 
+/** GET /summary/yearly — 年間月別サマリーを取得 */
+export async function getYearlySummary(year?: number): Promise<MonthlySummary[]> {
+  const targetYear = year || new Date().getFullYear();
+  const summaries: MonthlySummary[] = [];
+
+  for (let m = 1; m <= 12; m++) {
+    const month = `${targetYear}-${String(m).padStart(2, '0')}`;
+    const summary = await getMonthlySummary(month);
+    summaries.push(summary);
+  }
+
+  return summaries;
+}
+
 // ========================================
 // ルールベースの仮分類（設計書 §12-2 フォールバック）
 // AgentCore タイムアウト時にも使用

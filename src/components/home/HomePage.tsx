@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LuChevronLeft, LuChevronRight, LuSettings } from 'react-icons/lu';
 import { BudgetCard } from './BudgetCard';
 import { CategoryChart } from './CategoryChart';
+import { YearlyChart } from './YearlyChart';
 import { RecentTransactions } from './RecentTransactions';
 import { InsightsCard } from './InsightsCard';
 import { getMonthlySummary } from '../../api/transactions';
@@ -105,6 +106,11 @@ export function HomePage() {
           />
         </div>
       )}
+
+      {/* 年間収支グラフ */}
+      <div className="mt-4">
+        <YearlyChart />
+      </div>
 
       {/* AIインサイト */}
       <div className="mt-4">
