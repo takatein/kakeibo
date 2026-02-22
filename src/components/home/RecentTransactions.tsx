@@ -33,20 +33,21 @@ export function RecentTransactions({ month }: RecentTransactionsProps) {
   return (
     <div className="card">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-bold text-slate-700">最近の記録</h3>
+        <h3 className="text-sm font-bold" style={{ color: '#1E3A5F' }}>最近の記録</h3>
         <button
           onClick={() => navigate('/transactions')}
-          className="text-xs text-primary-600 font-medium"
+          className="text-xs font-medium"
+          style={{ color: '#2E86C1' }}
         >
-          すべて見る →
+          すべて見る ›
         </button>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-1">
         {transactions.map((txn) => (
           <div
             key={txn.txnId}
-            className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0"
+            className="flex items-center gap-3 py-2.5 border-b border-slate-50 last:border-0"
           >
             <div
               className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
@@ -60,10 +61,15 @@ export function RecentTransactions({ month }: RecentTransactionsProps) {
               </p>
               <p className="text-xs text-slate-400">
                 {formatDateJa(txn.date)} ・ {CATEGORY_LABELS[txn.category]}
-                {txn.isFixed && ' ・ 固定'}
+                {txn.isFixed && (
+                  <span className="ml-1 px-1 py-0.5 rounded"
+                    style={{ backgroundColor: '#F0F0F0', fontSize: '10px', color: '#94A3B8' }}>
+                    固定
+                  </span>
+                )}
               </p>
             </div>
-            <p className="text-sm font-bold text-slate-700 shrink-0">
+            <p className="text-sm font-bold shrink-0" style={{ color: '#1E3A5F' }}>
               {formatCurrency(txn.amount)}
             </p>
           </div>

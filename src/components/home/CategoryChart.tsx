@@ -1,51 +1,106 @@
 import { CATEGORY_COLORS, type CategoryBreakdown } from '../../types';
-import { formatCurrency, formatPercent } from '../../utils/format';
+import { formatCurrency } from '../../utils/format';
+
+/** カテゴリアイコンマッピング */
+const CATEGORY_ICONS: Record<string, string> = {
+  food_home: '🍳',
+  food_restaurant: '🍽',
+  food_premium: '🥂',
+  daily_goods: '🧴',
+  children: '👶',
+  education: '📖',
+  outing: '🎡',
+  travel: '✈️',
+  medical: '🏥',
+  utility: '💡',
+  insurance: '🛡',
+  loan: '🏠',
+  car: '🚗',
+  hobby: '🎮',
+  other: '•••',
+};
+
+const FIXED_CATEGORIES = ['utility', 'insurance', 'loan', 'education'];
 
 interface CategoryChartProps {
   breakdown: CategoryBreakdown[];
+  onViewDetail?: () => void;
 }
 
-export function CategoryChart({ breakdown }: CategoryChartProps) {
-  const total = breakdown.reduce((sum, b) => sum + b.amount, 0);
+export function CategoryChart({ breakdown, onViewDetail }: CategoryChartProps) {
+  const maxAmount = Math.max(...breakdown.map(b => b.amount));
 
   return (
     <div className="card">
-      <h3 className="text-sm font-bold text-slate-700 mb-3">カテゴリ別支出</h3>
-
-      {/* 設計書 §10-3 横棒グラフ風。タップで明細へ */}
-      <div className="space-y-2">
-        {breakdown.slice(0, 8).map((item) => (
-          <div key={item.category}>
-            <div className="flex items-center justify-between mb-0.5">
-              <span className="text-xs text-slate-600">{item.label}</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-slate-700">
-                  {formatCurrency(item.amount)}
-                </span>
-                {item.budgetAmount && item.amount > item.budgetAmount && (
-                  <span className="text-[10px] text-red-500 font-medium">超過</span>
-                )}
-              </div>
-            </div>
-            <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
-              <div
-                className="absolute inset-y-0 left-0 rounded-full transition-all duration-300"
-                style={{
-                  width: `${total > 0 ? (item.amount / total) * 100 : 0}%`,
-                  backgroundColor: CATEGORY_COLORS[item.category],
-                }}
-              />
-            </div>
-            <p className="text-[10px] text-slate-400 mt-0.5">
-              {formatPercent(item.percentage)} ・ {item.count}件
-            </p>
-          </div>
-        ))}
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold" style={{ color: '#1E3A5F' }}>カテゴリ別支出</h3>
+        {onViewDetail && (
+          <button
+            onClick={onViewDetail}
+            className="text-xs font-medium"
+            style={{ color: '#2E86C1' }}
+          >
+            詳細 ›
+          </button>
+        )}
       </div>
 
-      {breakdown.length > 8 && (
-        <p className="text-xs text-slate-400 text-center mt-2">
-          他 {breakdown.length - 8} カテゴリ
+      <div className="space-y-3">
+        {breakdown.slice(0, 6).map((item) => {
+          const isFixed = FIXED_CATEGORIES.includes(item.category);
+          const barPercent = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
+
+          return (
+            <div key={item.category} className={isFixed ? 'opacity-75' : ''}>
+              <div className="flex items-center gap-3">
+                {/* アイコン + ラベル */}
+                <div className="flex items-center gap-2 w-24 shrink-0">
+                  <span className="text-base">{CATEGORY_ICONS[item.category] || '•••'}</span>
+                  <span className="text-xs text-slate-600 truncate">{item.label}</span>
+                </div>
+
+                {/* プログレスバー */}
+                <div className="flex-1 h-6 rounded-full overflow-hidden"
+                  style={{ backgroundColor: isFixed ? '#F0F0F0' : '#F5F5F5' }}>
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${Math.max(barPercent, 3)}%`,
+                      backgroundColor: isFixed ? '#94A3B8' : CATEGORY_COLORS[item.category],
+                    }}
+                  />
+                </div>
+
+                {/* 金額 + 自動バッジ */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <span className="text-sm font-bold" style={{ color: '#1E3A5F' }}>
+                    {formatCurrency(item.amount)}
+                  </span>
+                  {isFixed && (
+                    <span className="text-[10px] text-slate-400 px-1.5 py-0.5 rounded"
+                      style={{ backgroundColor: '#F0F0F0' }}>
+                      自動
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 超過表示 */}
+              {item.budgetAmount && item.amount > item.budgetAmount && (
+                <div className="flex justify-end mt-0.5">
+                  <span className="text-[10px] font-medium" style={{ color: '#DC2626' }}>
+                    予算超過 +{formatCurrency(item.amount - item.budgetAmount)}
+                  </span>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {breakdown.length > 6 && (
+        <p className="text-xs text-slate-400 text-center mt-3">
+          他 {breakdown.length - 6} カテゴリ
         </p>
       )}
     </div>

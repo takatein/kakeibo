@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PageHeader } from '../layout/PageHeader';
+import { useNavigate } from 'react-router-dom';
 import { TextInput } from './TextInput';
 import { ConfirmDialog } from './ConfirmDialog';
 import { submitInput, confirmInput } from '../../api/transactions';
@@ -8,13 +8,13 @@ import type { ConfirmItem } from '../../types';
 type InputMode = 'text' | 'voice' | 'camera';
 
 export function InputPage() {
+  const navigate = useNavigate();
   const [mode, setMode] = useState<InputMode>('text');
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [items, setItems] = useState<ConfirmItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
 
-  /** 設計書 §9: POST /input */
   const handleTextSubmit = async (text: string) => {
     const response = await submitInput({
       type: 'text',
@@ -25,7 +25,6 @@ export function InputPage() {
     setItems(response.items);
   };
 
-  /** 設計書 §9: POST /input/confirm */
   const handleConfirm = async (confirmedItems: ConfirmItem[]) => {
     if (!sessionId) return;
     setIsSaving(true);
@@ -59,23 +58,37 @@ export function InputPage() {
 
   return (
     <div className="px-4 pb-4">
-      <PageHeader title="支出を記録" subtitle="しゃべる・撮る・雑に書く" />
+      {/* ヘッダー: タイトル + 閉じるボタン */}
+      <header className="sticky top-0 z-40 pt-4 pb-2 backdrop-blur-sm"
+        style={{ backgroundColor: 'rgba(245, 245, 245, 0.95)' }}>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-bold" style={{ color: '#1E3A5F' }}>支出を記録</h1>
+          <button
+            onClick={() => navigate('/')}
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 text-lg"
+          >
+            ✕
+          </button>
+        </div>
+      </header>
 
-      {/* 設計書 §10-3: [📷] [💬] [🎤] モードタブ */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-4">
+      {/* モードタブ: ピル型トグル */}
+      <div className="flex gap-1 p-1 mb-5" style={{ backgroundColor: '#F0F0F0', borderRadius: '12px' }}>
         {([
-          { key: 'camera' as InputMode, label: 'レシート', icon: '📷' },
+          { key: 'camera' as InputMode, label: '撮影', icon: '📷' },
           { key: 'text' as InputMode, label: 'テキスト', icon: '💬' },
           { key: 'voice' as InputMode, label: '音声', icon: '🎤' },
         ]).map(({ key, label, icon }) => (
           <button
             key={key}
             onClick={() => setMode(key)}
-            className={`flex-1 flex items-center justify-center gap-1 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-              mode === key
-                ? 'bg-white text-primary-600 shadow-sm'
-                : 'text-slate-500'
-            }`}
+            className="flex-1 flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium transition-all"
+            style={{
+              borderRadius: '10px',
+              backgroundColor: mode === key ? '#1E3A5F' : 'transparent',
+              color: mode === key ? '#FFFFFF' : '#6B7280',
+              boxShadow: mode === key ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
+            }}
           >
             <span>{icon}</span>
             {label}
@@ -85,12 +98,13 @@ export function InputPage() {
 
       {/* 成功メッセージ */}
       {savedMessage && (
-        <div className="bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 mb-4 text-center text-sm font-medium animate-pulse">
+        <div className="px-4 py-3 mb-4 text-center text-sm font-medium text-green-700"
+          style={{ backgroundColor: '#D1FAE5', borderRadius: '12px' }}>
           {savedMessage}
         </div>
       )}
 
-      {/* 設計書 §10-3: 確認画面 */}
+      {/* 確認画面 or 入力エリア */}
       {items.length > 0 ? (
         <ConfirmDialog
           items={items}
@@ -104,26 +118,41 @@ export function InputPage() {
 
           {mode === 'voice' && (
             <div className="card text-center py-12">
-              <p className="text-4xl mb-3">🎤</p>
-              <p className="text-slate-500 text-sm">
-                音声入力は Phase 2 で実装予定です
+              {/* マイクボタン — パルスリング */}
+              <div className="relative inline-flex items-center justify-center mb-6">
+                <div className="absolute w-24 h-24 rounded-full animate-ping opacity-10"
+                  style={{ backgroundColor: '#2E86C1' }} />
+                <div className="absolute w-20 h-20 rounded-full opacity-15"
+                  style={{ backgroundColor: '#D6E4F0' }} />
+                <button className="relative w-16 h-16 rounded-full flex items-center justify-center text-2xl text-white"
+                  style={{ backgroundColor: '#1E3A5F' }}>
+                  🎤
+                </button>
+              </div>
+              <p className="text-slate-500 text-sm mb-2">ボタンを押して話してください</p>
+              <p className="text-slate-400 text-xs">
+                「居酒屋で4000円」のように話すと<br />AIが自動で分類します
               </p>
-              <p className="text-slate-400 text-xs mt-2">
-                Web Speech API を使用して<br />
-                「居酒屋で4000円」のような音声を認識します
+              <p className="text-xs mt-4 px-3 py-1.5 inline-block"
+                style={{ backgroundColor: '#FDEBD0', color: '#E67E22', borderRadius: '20px' }}>
+                Phase 2 で実装予定
               </p>
             </div>
           )}
 
           {mode === 'camera' && (
             <div className="card text-center py-12">
-              <p className="text-4xl mb-3">📷</p>
-              <p className="text-slate-500 text-sm">
-                レシート撮影は Phase 2 で実装予定です
+              <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"
+                style={{ backgroundColor: '#D6E4F0' }}>
+                📷
+              </div>
+              <p className="text-slate-500 text-sm mb-2">レシートを撮影してください</p>
+              <p className="text-slate-400 text-xs">
+                Bedrock Nova Pro でレシートから<br />金額・店名を自動読み取りします
               </p>
-              <p className="text-slate-400 text-xs mt-2">
-                Bedrock Nova Pro (マルチモーダル) を使用して<br />
-                レシートから金額・店名を自動読み取りします
+              <p className="text-xs mt-4 px-3 py-1.5 inline-block"
+                style={{ backgroundColor: '#FDEBD0', color: '#E67E22', borderRadius: '20px' }}>
+                Phase 2 で実装予定
               </p>
             </div>
           )}

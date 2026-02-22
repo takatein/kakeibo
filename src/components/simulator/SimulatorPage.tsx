@@ -1,23 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
 import { PageHeader } from '../layout/PageHeader';
-import { getFamilySettings, getTotalMonthlyIncome } from '../../api/family-settings';
+import { getFamilySettings } from '../../api/family-settings';
 import { getFixedCosts, getFixedCostAtAge } from '../../api/fixed-costs';
 import { getMonthlySummary } from '../../api/transactions';
 import { formatCurrency, formatManYen } from '../../utils/format';
 import type { FamilySettings, FixedCost, SimulationDataPoint, SimulationMilestone, SimulationWarning } from '../../types';
 
 const RETIREMENT_AGE = 65;
-const PENSION_ANNUAL = 3000000; // 厚生年金(235万) + 妻基礎年金(65万) = 300万/年
+const PENSION_ANNUAL = 3000000;
 
-/**
- * 設計書 §8-4 Simulator Agent の計算ルール準拠
- * - 35歳で昇進: 年収1,050万 → 手取り720万
- * - 以降 年功序列で年2%増加
- * - 55歳: 役職定年で10%ダウン
- * - 60〜64歳: 再雇用で昇進前給与の70%
- * - 65歳〜: 厚生年金(235万) + 妻基礎年金(65万) = 300万/年
- * - インフレ: 生活費 年1.5%増加
- */
 function calcAnnualIncome(
   age: number,
   baseMonthlyIncome: number,
@@ -34,14 +25,13 @@ function calcAnnualIncome(
     return { income: PENSION_ANNUAL + spouseAnnual };
   }
 
-  // 年功序列 年2%増加（基準年齢からの差分）
   const baseAge = 30;
   const yearsWorked = Math.max(age - baseAge, 0);
 
   if (age < 35) {
     selfIncome = baseAnnual * Math.pow(1.02, yearsWorked);
   } else if (age === 35) {
-    selfIncome = baseAnnual * 1.3; // 昇進ボーナス
+    selfIncome = baseAnnual * 1.3;
     event = { age, event: '昇進', impact: '+30%年収' };
   } else if (age < 55) {
     selfIncome = baseAnnual * 1.3 * Math.pow(1.02, age - 35);
@@ -51,7 +41,6 @@ function calcAnnualIncome(
   } else if (age < 60) {
     selfIncome = baseAnnual * 1.3 * Math.pow(1.02, 20) * 0.9;
   } else {
-    // 60-64: 再雇用（昇進前給与の70%）
     selfIncome = baseAnnual * 0.7;
     if (age === 60) {
       event = { age, event: '再雇用', impact: '昇進前の70%' };
@@ -61,12 +50,6 @@ function calcAnnualIncome(
   return { income: Math.round(selfIncome + spouseAnnual + otherAnnual), event };
 }
 
-/**
- * 設計書 §8-4 教育費
- * - 私立中学: 120万/年/人
- * - 高校塾: 100万/年/人
- * - 国立大学+一人暮らし: 175万/年/人
- */
 function calcEducationCost(childAge: number): { cost: number; event?: string } {
   if (childAge < 3) return { cost: 300000 };
   if (childAge < 6) return { cost: 250000, event: childAge === 3 ? '幼稚園入園' : undefined };
@@ -83,10 +66,9 @@ export function SimulatorPage() {
   const [currentMonthlyVariable, setCurrentMonthlyVariable] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 設計書 §10-3: スライダーパネル
   const [overrideIncome, setOverrideIncome] = useState<number | null>(null);
   const [privateSchool, setPrivateSchool] = useState(true);
-  const [interestRate, setInterestRate] = useState<number | null>(null);
+  const [interestRate, setInterestRate] = useState(1.5);
 
   useEffect(() => { loadData(); }, []);
 
@@ -126,13 +108,11 @@ export function SimulatorPage() {
       const year = currentYear + (age - selfAge);
       const yearsFromNow = age - selfAge;
 
-      // 収入
       const { income: annualIncome, event: incomeEvent } = calcAnnualIncome(
         age, baseMonthlyIncome, settings.income.spouseMonthlyNet, settings.income.otherMonthlyIncome
       );
       if (incomeEvent) milestones.push(incomeEvent);
 
-      // 固定費（年齢トリガー考慮）
       const memberAges: Record<string, number> = { self: age };
       if (settings.members.spouse) memberAges.spouse = year - settings.members.spouse.birthYear;
       if (settings.members.child1) memberAges.child1 = year - settings.members.child1.birthYear;
@@ -140,13 +120,12 @@ export function SimulatorPage() {
 
       const annualFixed = getFixedCostAtAge(fixedCosts, memberAges) * 12;
 
-      // 教育費
       let annualEducation = 0;
       for (const [key, child] of Object.entries(settings.members)) {
         if (!key.startsWith('child') || !child) continue;
         const childAge = year - (child as typeof settings.members.child1)!.birthYear;
         const { cost, event } = calcEducationCost(childAge);
-        annualEducation += privateSchool ? cost : Math.round(cost * 0.5); // 公立なら半額
+        annualEducation += privateSchool ? cost : Math.round(cost * 0.5);
         if (event) {
           milestones.push({
             age,
@@ -156,23 +135,13 @@ export function SimulatorPage() {
         }
       }
 
-      // 変動費（インフレ考慮 §8-4）
       const annualVariable = Math.round(monthlyVariable * 12 * Math.pow(INFLATION, yearsFromNow));
-
       const totalExpense = annualFixed + annualVariable + annualEducation;
       const balance = annualIncome - totalExpense;
       savings += balance;
 
-      dataPoints.push({
-        age,
-        year,
-        annualIncome,
-        annualExpense: totalExpense,
-        balance,
-        cumulativeSavings: savings,
-      });
+      dataPoints.push({ age, year, annualIncome, annualExpense: totalExpense, balance, cumulativeSavings: savings });
 
-      // 警告
       if (savings < 0 && (dataPoints.length < 2 || dataPoints[dataPoints.length - 2].cumulativeSavings >= 0)) {
         warnings.push({
           age,
@@ -181,12 +150,7 @@ export function SimulatorPage() {
       }
     }
 
-    return {
-      dataPoints,
-      milestones,
-      warnings,
-      finalSavings: savings,
-    };
+    return { dataPoints, milestones, warnings, finalSavings: savings };
   }, [settings, fixedCosts, currentMonthlyVariable, overrideIncome, privateSchool, interestRate]);
 
   if (isLoading) {
@@ -206,38 +170,101 @@ export function SimulatorPage() {
 
   const minSavings = Math.min(...dataPoints.map(p => p.cumulativeSavings));
   const maxSavings = Math.max(...dataPoints.map(p => p.cumulativeSavings));
+  const selfAge = new Date().getFullYear() - settings.members.self.birthYear;
+
+  // 65歳以降の取り崩し計算
+  const retirementBalance = finalSavings > 0
+    ? `老後も${formatManYen(Math.round(finalSavings / 30))}/年 取り崩しで95歳まで安心`
+    : '老後の資金が不足する可能性があります';
 
   return (
     <div className="px-4 pb-4">
-      <PageHeader title="将来シミュレーター" subtitle="65歳までの貯蓄推移" />
+      <PageHeader title="将来シミュレーター" />
 
-      {/* 設計書 §10-3: 65歳時点の貯蓄 */}
-      <div className="card mb-4 text-center">
-        <p className="text-xs text-slate-500">65歳時点</p>
-        <p className={`text-3xl font-bold ${finalSavings < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
+      {/* サマリーカード — ネイビー背景、白テキスト */}
+      <div className="p-6 mb-4 text-center"
+        style={{ backgroundColor: '#1E3A5F', borderRadius: '16px' }}>
+        <p className="text-xs mb-2" style={{ color: '#D6E4F0' }}>65歳時点の貯蓄</p>
+        <p className="font-bold mb-2"
+          style={{
+            fontSize: '36px',
+            lineHeight: 1.1,
+            color: finalSavings < 0 ? '#FCA5A5' : '#FFFFFF',
+          }}>
           {formatManYen(finalSavings)}
         </p>
+        <p className="text-xs" style={{ color: '#D6E4F0' }}>{retirementBalance}</p>
       </div>
 
-      {/* 設計書 §10-3: 折れ線グラフ（簡易棒グラフ） */}
+      {/* 貯蓄推移グラフ */}
       <div className="card mb-4">
-        <h3 className="text-sm font-bold text-slate-700 mb-3">貯蓄推移</h3>
-        <div className="h-48 flex items-end gap-0.5">
+        <h3 className="text-sm font-bold mb-3" style={{ color: '#1E3A5F' }}>貯蓄推移</h3>
+        <div className="relative h-52 flex items-end gap-px">
+          {/* ゼロライン（マイナスがある場合） */}
+          {minSavings < 0 && (
+            <div
+              className="absolute left-0 right-0 border-t border-dashed border-slate-300"
+              style={{
+                bottom: `${((0 - minSavings) / (maxSavings - minSavings)) * 100}%`,
+              }}
+            />
+          )}
+
           {dataPoints.map((p, i) => {
             const range = maxSavings - minSavings || 1;
             const normalizedHeight = ((p.cumulativeSavings - minSavings) / range) * 100;
             const heightPercent = Math.max(normalizedHeight, 2);
             const isNegative = p.cumulativeSavings < 0;
+            const isCurrent = p.age === selfAge;
+
+            // マイルストーンマーカー
+            const milestone = milestones.find(m => m.age === p.age);
 
             return (
-              <div key={i} className="flex-1 flex flex-col items-center justify-end"
+              <div key={i} className="flex-1 flex flex-col items-center justify-end relative"
                 title={`${p.age}歳: ${formatManYen(p.cumulativeSavings)}`}>
+
+                {/* マイルストーンマーカー */}
+                {milestone && (
+                  <div className="absolute -top-1 z-10">
+                    <div className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: milestone.event === '昇進' ? '#059669' : '#E67E22' }} />
+                  </div>
+                )}
+
+                {/* 現在位置マーカー */}
+                {isCurrent && (
+                  <div className="absolute top-0 bottom-0 w-px border-l border-dashed"
+                    style={{ borderColor: '#2E86C1' }}>
+                    <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[8px] font-medium whitespace-nowrap"
+                      style={{ color: '#2E86C1' }}>
+                      現在
+                    </span>
+                  </div>
+                )}
+
+                {/* バー */}
                 <div
-                  className={`w-full rounded-t transition-all ${
-                    isNegative ? 'bg-red-400' : 'bg-primary-400'
-                  }`}
-                  style={{ height: `${heightPercent}%`, minHeight: '2px' }}
+                  className="w-full transition-all"
+                  style={{
+                    height: `${heightPercent}%`,
+                    minHeight: '2px',
+                    backgroundColor: isNegative ? '#FCA5A5' : '#2E86C1',
+                    borderRadius: '2px 2px 0 0',
+                  }}
                 />
+
+                {/* 赤字ゾーンの塗りつぶし */}
+                {isNegative && (
+                  <div
+                    className="absolute bottom-0 left-0 right-0"
+                    style={{
+                      height: `${Math.abs((p.cumulativeSavings / minSavings) * ((0 - minSavings) / range) * 100)}%`,
+                      backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    }}
+                  />
+                )}
+
                 {p.age % 5 === 0 && (
                   <span className="text-[8px] text-slate-400 mt-1">{p.age}</span>
                 )}
@@ -251,14 +278,17 @@ export function SimulatorPage() {
         </div>
       </div>
 
-      {/* 設計書 §10-3: スライダーパネル */}
-      <div className="card mb-4 space-y-4">
-        <h3 className="text-sm font-bold text-slate-700">「もし〜なら」試算</h3>
+      {/* スライダーパネル — 試算変更 */}
+      <div className="card mb-4 space-y-5">
+        <h3 className="text-sm font-bold" style={{ color: '#1E3A5F' }}>試算を変更</h3>
 
+        {/* 年収スライダー */}
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-slate-500">月収（手取り）</label>
-            <span className="text-xs font-medium">{formatCurrency(overrideIncome || settings.income.selfMonthlyNet)}</span>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-slate-600">年収</label>
+            <span className="text-sm font-bold" style={{ color: '#1E3A5F' }}>
+              {formatManYen((overrideIncome || settings.income.selfMonthlyNet) * 12)}
+            </span>
           </div>
           <input
             type="range"
@@ -267,44 +297,82 @@ export function SimulatorPage() {
             step={10000}
             value={overrideIncome || settings.income.selfMonthlyNet}
             onChange={e => setOverrideIncome(parseInt(e.target.value))}
-            className="w-full"
+            className="w-full h-2 rounded-full appearance-none cursor-pointer"
+            style={{
+              background: `linear-gradient(to right, #2E86C1 ${((overrideIncome || settings.income.selfMonthlyNet) - 200000) / 13000}%, #E5E7EB ${((overrideIncome || settings.income.selfMonthlyNet) - 200000) / 13000}%)`,
+            }}
           />
         </div>
 
+        {/* 私立中学トグル */}
         <div className="flex items-center justify-between">
-          <label className="text-xs text-slate-500">私立中学</label>
+          <label className="text-sm text-slate-600">私立中学</label>
           <button
             onClick={() => setPrivateSchool(!privateSchool)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-              privateSchool ? 'bg-primary-100 text-primary-700' : 'bg-slate-100 text-slate-500'
-            }`}
+            className="relative w-12 h-7 rounded-full transition-colors duration-200"
+            style={{ backgroundColor: privateSchool ? '#2E86C1' : '#D1D5DB' }}
           >
-            {privateSchool ? 'ON' : 'OFF'}
+            <div
+              className="absolute top-0.5 w-6 h-6 bg-white rounded-full transition-transform duration-200"
+              style={{
+                transform: privateSchool ? 'translateX(22px)' : 'translateX(2px)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+              }}
+            />
           </button>
+        </div>
+
+        {/* 変動金利スライダー */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="text-sm text-slate-600">変動金利</label>
+            <span className="text-sm font-bold" style={{ color: '#1E3A5F' }}>
+              {interestRate.toFixed(1)}%
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={30}
+            step={1}
+            value={interestRate * 10}
+            onChange={e => setInterestRate(parseInt(e.target.value) / 10)}
+            className="w-full h-2 rounded-full appearance-none cursor-pointer"
+            style={{
+              background: `linear-gradient(to right, #2E86C1 ${(interestRate / 3) * 100}%, #E5E7EB ${(interestRate / 3) * 100}%)`,
+            }}
+          />
         </div>
       </div>
 
+      {/* 警告カード */}
+      {warnings.map((w, i) => (
+        <div
+          key={i}
+          className="mb-4 p-4 flex items-start gap-3"
+          style={{ backgroundColor: '#FDEBD0', borderRadius: '16px' }}
+        >
+          <span className="text-lg shrink-0">⚠️</span>
+          <div>
+            <p className="text-sm font-bold" style={{ color: '#E67E22' }}>{w.age}歳</p>
+            <p className="text-xs mt-0.5" style={{ color: '#92400E' }}>{w.message}</p>
+          </div>
+        </div>
+      ))}
+
       {/* マイルストーン年表 */}
       <div className="card mb-4">
-        <h3 className="text-sm font-bold text-slate-700 mb-3">ライフイベント年表</h3>
-        <div className="space-y-1 max-h-64 overflow-y-auto">
+        <h3 className="text-sm font-bold mb-3" style={{ color: '#1E3A5F' }}>ライフイベント年表</h3>
+        <div className="space-y-0 max-h-64 overflow-y-auto">
           {milestones.map((m, i) => (
-            <div key={i} className="flex items-center text-xs py-1.5 border-b border-slate-50">
-              <span className="w-12 text-slate-500 shrink-0">{m.age}歳</span>
-              <span className="flex-1 text-slate-700 font-medium">{m.event}</span>
+            <div key={i} className="flex items-center text-xs py-2.5 border-b border-slate-50 last:border-0">
+              <span className="w-12 font-medium shrink-0" style={{ color: '#2E86C1' }}>{m.age}歳</span>
+              <span className="flex-1 font-medium" style={{ color: '#1E3A5F' }}>{m.event}</span>
               <span className="text-slate-400 shrink-0">{m.impact}</span>
             </div>
           ))}
         </div>
       </div>
-
-      {/* 設計書 §8-4: 警告 */}
-      {warnings.map((w, i) => (
-        <div key={i} className="mb-4 bg-red-50 border border-red-200 rounded-xl p-4">
-          <p className="text-sm font-bold text-red-700">{w.age}歳 注意</p>
-          <p className="text-xs text-red-600 mt-1">{w.message}</p>
-        </div>
-      ))}
     </div>
   );
 }

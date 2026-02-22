@@ -33,134 +33,196 @@ export function ConfirmDialog({ items: initialItems, onConfirm, onCancel, isSavi
 
   return (
     <div className="space-y-4">
-      {items.map((item) => (
-        <div key={item.tempId} className="card">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-lg">🤖</span>
-            <h3 className="text-sm font-bold text-slate-700">AI 解釈結果</h3>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full ${
-              item.confidence >= 0.8
-                ? 'bg-emerald-100 text-emerald-700'
-                : item.confidence >= 0.5
-                  ? 'bg-primary-100 text-primary-700'
-                  : 'bg-amber-100 text-amber-700'
-            }`}>
-              確信度 {Math.round(item.confidence * 100)}%
-            </span>
-          </div>
+      {/* セクションラベル */}
+      <div className="flex items-center gap-2 px-1">
+        <div className="flex-1 h-px bg-slate-200" />
+        <span className="text-xs text-slate-400 font-medium">AI 解釈結果</span>
+        <div className="flex-1 h-px bg-slate-200" />
+      </div>
 
-          {/* 設計書 §10-3 ConfirmDialog: 店名・金額・カテゴリ・日付、各項目タップで編集 */}
+      {items.map((item) => {
+        const isLowConfidence = item.confidence < 0.5;
 
-          {/* 店名 */}
-          {item.shopName && (
-            <div className="flex items-center justify-between py-3 border-b border-slate-100">
-              <span className="text-sm text-slate-500">店名</span>
-              <span className="text-sm font-medium">{item.shopName}</span>
-            </div>
-          )}
-
-          {/* 金額 */}
-          <div className="flex items-center justify-between py-3 border-b border-slate-100">
-            <span className="text-sm text-slate-500">金額</span>
-            {editingAmountId === item.tempId ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="number"
-                  value={amountText}
-                  onChange={e => setAmountText(e.target.value)}
-                  className="w-24 text-right input-field py-1 px-2 text-sm"
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleAmountSave(item.tempId)}
-                />
-                <button onClick={() => handleAmountSave(item.tempId)} className="text-primary-600 text-sm font-medium">
-                  OK
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setEditingAmountId(item.tempId);
-                  setAmountText(String(item.amount));
+        return (
+          <div
+            key={item.tempId}
+            className="card relative overflow-hidden"
+            style={{
+              backgroundColor: '#D6E4F0',
+              borderLeft: isLowConfidence ? '4px solid #E67E22' : 'none',
+            }}
+          >
+            {/* 確信度バッジ */}
+            <div className="flex items-center justify-between mb-3">
+              <span className="text-xs text-slate-500">AIの確信度</span>
+              <span
+                className="text-[11px] font-medium px-2.5 py-0.5"
+                style={{
+                  borderRadius: '20px',
+                  backgroundColor: item.confidence >= 0.8 ? '#D1FAE5' : item.confidence >= 0.5 ? '#DBEAFE' : '#FDEBD0',
+                  color: item.confidence >= 0.8 ? '#059669' : item.confidence >= 0.5 ? '#2563EB' : '#E67E22',
                 }}
-                className="text-lg font-bold text-primary-600"
               >
-                {formatCurrency(item.amount)}
+                {item.confidence >= 0.8 ? '高' : item.confidence >= 0.5 ? '中' : '低'}
+                {' '}{Math.round(item.confidence * 100)}%
+              </span>
+            </div>
+
+            {/* 店名 */}
+            {item.shopName && (
+              <div className="flex items-center justify-between py-3 border-b border-white/50">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm">🏪</span>
+                  <span className="text-sm text-slate-500">店名</span>
+                </div>
+                <span className="text-sm font-medium" style={{ color: '#1E3A5F' }}>
+                  {item.shopName} ›
+                </span>
+              </div>
+            )}
+
+            {/* 金額 */}
+            <div className="flex items-center justify-between py-3 border-b border-white/50">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">¥</span>
+                <span className="text-sm text-slate-500">金額</span>
+              </div>
+              {editingAmountId === item.tempId ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={amountText}
+                    onChange={e => setAmountText(e.target.value)}
+                    className="w-24 text-right py-1 px-2 text-sm bg-white"
+                    style={{ borderRadius: '8px', border: '2px solid #2E86C1' }}
+                    autoFocus
+                    onKeyDown={e => e.key === 'Enter' && handleAmountSave(item.tempId)}
+                  />
+                  <button
+                    onClick={() => handleAmountSave(item.tempId)}
+                    className="text-sm font-medium"
+                    style={{ color: '#2E86C1' }}
+                  >
+                    OK
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    setEditingAmountId(item.tempId);
+                    setAmountText(String(item.amount));
+                  }}
+                  className="text-lg font-bold"
+                  style={{ color: '#1E3A5F' }}
+                >
+                  {formatCurrency(item.amount)} ›
+                </button>
+              )}
+            </div>
+
+            {/* カテゴリ */}
+            <div className="flex items-center justify-between py-3 border-b border-white/50">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">🏷</span>
+                <span className="text-sm text-slate-500">カテゴリ</span>
+              </div>
+              <button
+                onClick={() => setShowCategoryPicker(
+                  showCategoryPicker === item.tempId ? null : item.tempId
+                )}
+                className="flex items-center gap-2"
+              >
+                <span
+                  className="px-2.5 py-1 text-xs font-medium text-white"
+                  style={{
+                    backgroundColor: CATEGORY_COLORS[item.category],
+                    borderRadius: '20px',
+                  }}
+                >
+                  {item.categoryLabel}
+                </span>
+                <span className="text-slate-400 text-xs">›</span>
               </button>
+            </div>
+
+            {/* カテゴリ選択ピッカー */}
+            {showCategoryPicker === item.tempId && (
+              <div className="grid grid-cols-3 gap-1.5 py-3 border-b border-white/50">
+                {ALL_CATEGORIES.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => {
+                      updateItem(item.tempId, {
+                        category: cat,
+                        categoryLabel: CATEGORY_LABELS[cat],
+                      });
+                      setShowCategoryPicker(null);
+                    }}
+                    className="text-xs py-2 px-1 text-center transition-colors"
+                    style={{
+                      borderRadius: '10px',
+                      backgroundColor: item.category === cat ? '#1E3A5F' : 'rgba(255,255,255,0.7)',
+                      color: item.category === cat ? '#FFFFFF' : '#374151',
+                      fontWeight: item.category === cat ? '600' : '400',
+                    }}
+                  >
+                    {CATEGORY_LABELS[cat]}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 日付 */}
+            <div className="flex items-center justify-between py-3 border-b border-white/50">
+              <div className="flex items-center gap-2">
+                <span className="text-sm">📅</span>
+                <span className="text-sm text-slate-500">日付</span>
+              </div>
+              <span className="text-sm font-medium" style={{ color: '#1E3A5F' }}>
+                {formatDateJa(item.date)} ›
+              </span>
+            </div>
+
+            {/* 代替カテゴリ候補 */}
+            {item.alternativeCategories && item.alternativeCategories.length > 0 && (
+              <div className="pt-3">
+                <span className="text-xs text-slate-500 block mb-2">もしかして:</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {item.alternativeCategories.map((alt) => (
+                    <button
+                      key={alt.category}
+                      onClick={() => updateItem(item.tempId, {
+                        category: alt.category,
+                        categoryLabel: alt.label,
+                      })}
+                      className="text-xs px-3 py-1.5 bg-white/70 text-slate-600 hover:bg-white transition-colors"
+                      style={{ borderRadius: '20px' }}
+                    >
+                      {alt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
+        );
+      })}
 
-          {/* カテゴリ */}
-          <div className="flex items-center justify-between py-3 border-b border-slate-100">
-            <span className="text-sm text-slate-500">カテゴリ</span>
-            <button
-              onClick={() => setShowCategoryPicker(
-                showCategoryPicker === item.tempId ? null : item.tempId
-              )}
-              className="flex items-center gap-2"
-            >
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: CATEGORY_COLORS[item.category] }}
-              />
-              <span className="text-sm font-medium">
-                {item.categoryLabel}
-              </span>
-              <span className="text-slate-400 text-xs">▼</span>
-            </button>
-          </div>
-
-          {/* カテゴリ選択セレクタ */}
-          {showCategoryPicker === item.tempId && (
-            <div className="grid grid-cols-3 gap-1.5 py-3 border-b border-slate-100">
-              {ALL_CATEGORIES.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => {
-                    updateItem(item.tempId, {
-                      category: cat,
-                      categoryLabel: CATEGORY_LABELS[cat],
-                    });
-                    setShowCategoryPicker(null);
-                  }}
-                  className={`text-xs py-2 px-1 rounded-lg text-center transition-colors ${
-                    item.category === cat
-                      ? 'bg-primary-100 text-primary-700 font-medium'
-                      : 'bg-slate-50 text-slate-600 hover:bg-slate-100'
-                  }`}
-                >
-                  {CATEGORY_LABELS[cat]}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* 日付 */}
-          <div className="flex items-center justify-between py-3 border-b border-slate-100">
-            <span className="text-sm text-slate-500">日付</span>
-            <span className="text-sm font-medium">{formatDateJa(item.date)}</span>
-          </div>
-
-          {/* メモ */}
-          {item.memo && (
-            <div className="py-3">
-              <span className="text-sm text-slate-500">メモ</span>
-              <p className="text-sm text-slate-600 mt-1">{item.memo}</p>
-            </div>
-          )}
-        </div>
-      ))}
-
-      {/* アクションボタン */}
-      <div className="flex gap-3">
-        <button onClick={onCancel} className="btn-secondary flex-1">
-          やり直す
-        </button>
+      {/* 登録ボタン — フル幅、余白多め */}
+      <div className="pt-4 space-y-3">
         <button
           onClick={() => onConfirm(items)}
           disabled={isSaving || items.some(item => item.amount <= 0)}
-          className="btn-primary flex-1"
+          className="btn-primary w-full flex items-center justify-center gap-2 text-base"
+          style={{ padding: '14px 24px' }}
         >
-          {isSaving ? '保存中...' : '登録する'}
+          {isSaving ? '保存中...' : '登録する →'}
+        </button>
+        <button
+          onClick={onCancel}
+          className="btn-secondary w-full text-sm"
+        >
+          やり直す
         </button>
       </div>
     </div>

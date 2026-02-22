@@ -8,24 +8,25 @@ interface TransactionItemProps {
 }
 
 export function TransactionItem({ transaction, onEdit, onDelete }: TransactionItemProps) {
-  const { category, storeName, memo, amount, date, isFixed, inputBy } = transaction;
+  const { category, shopName, memo, amount, date, isFixed, inputBy } = transaction;
 
   return (
     <div className="card flex items-center gap-3">
       <div
-        className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
-        style={{ backgroundColor: CATEGORY_COLORS[category] }}
+        className="w-10 h-10 flex items-center justify-center text-xs font-bold text-white shrink-0"
+        style={{ backgroundColor: CATEGORY_COLORS[category], borderRadius: '12px' }}
       >
         {CATEGORY_LABELS[category].charAt(0)}
       </div>
 
       <div className="flex-1 min-w-0" onClick={onEdit}>
         <div className="flex items-center gap-1.5">
-          <p className="text-sm font-medium text-slate-700 truncate">
-            {storeName || memo || CATEGORY_LABELS[category]}
+          <p className="text-sm font-medium truncate" style={{ color: '#1E3A5F' }}>
+            {shopName || memo || CATEGORY_LABELS[category]}
           </p>
           {isFixed && (
-            <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded shrink-0">
+            <span className="text-[10px] px-1.5 py-0.5 shrink-0"
+              style={{ backgroundColor: '#F0F0F0', color: '#94A3B8', borderRadius: '20px' }}>
               固定
             </span>
           )}
@@ -37,7 +38,7 @@ export function TransactionItem({ transaction, onEdit, onDelete }: TransactionIt
       </div>
 
       <div className="text-right shrink-0">
-        <p className="text-sm font-bold text-slate-800">{formatCurrency(amount)}</p>
+        <p className="text-sm font-bold" style={{ color: '#1E3A5F' }}>{formatCurrency(amount)}</p>
         <button
           onClick={(e) => {
             e.stopPropagation();

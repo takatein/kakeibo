@@ -20,56 +20,65 @@ export function FixedCostList({ costs, onToggle, onDelete }: FixedCostListProps)
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {costs.map((cost) => (
         <div
           key={cost.costId}
-          className={`card flex items-center gap-3 ${!cost.isActive ? 'opacity-50' : ''}`}
+          className={`card ${!cost.isActive ? 'opacity-50' : ''}`}
         >
-          <button
-            onClick={() => onToggle(cost.costId, !cost.isActive)}
-            className={`w-5 h-5 rounded-full border-2 shrink-0 transition-colors ${
-              cost.isActive ? 'bg-primary-600 border-primary-600' : 'border-slate-300'
-            }`}
-          >
-            {cost.isActive && (
-              <span className="text-white text-xs flex items-center justify-center">✓</span>
-            )}
-          </button>
+          <div className="flex items-start gap-3">
+            {/* カテゴリカラーバー */}
+            <div
+              className="w-1 self-stretch rounded-full shrink-0 mt-1"
+              style={{ backgroundColor: CATEGORY_COLORS[cost.category] }}
+            />
 
-          <div
-            className="w-1 h-8 rounded-full shrink-0"
-            style={{ backgroundColor: CATEGORY_COLORS[cost.category] }}
-          />
-
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-slate-700 truncate">{cost.name}</p>
-            <p className="text-xs text-slate-400">
-              {CATEGORY_LABELS[cost.category]} ・ 毎月{cost.billingDay}日
-              {cost.ageTriggers && cost.ageTriggers.length > 0 && (
-                <span className="text-primary-500"> ・ 年齢トリガー{cost.ageTriggers.length}件</span>
-              )}
-            </p>
-            {/* 設計書 §4-2: AgeTrigger表示 */}
-            {cost.ageTriggers && cost.ageTriggers.length > 0 && (
-              <div className="mt-1 space-y-0.5">
-                {cost.ageTriggers.map((trigger, i) => (
-                  <p key={i} className="text-[10px] text-slate-400">
-                    → {trigger.description}
-                  </p>
-                ))}
+            {/* 内容 */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-sm font-medium truncate" style={{ color: '#1E3A5F' }}>
+                  {cost.name}
+                </p>
+                <p className="text-sm font-bold shrink-0" style={{ color: '#1E3A5F' }}>
+                  {formatCurrency(cost.amount)}/月
+                </p>
               </div>
-            )}
-          </div>
 
-          <div className="text-right shrink-0">
-            <p className="text-sm font-bold text-slate-700">{formatCurrency(cost.amount)}</p>
-            <button
-              onClick={() => onDelete(cost.costId)}
-              className="text-[10px] text-slate-300 hover:text-red-400"
-            >
-              削除
-            </button>
+              <div className="flex items-center gap-2">
+                {/* カテゴリチップ */}
+                <span
+                  className="text-[10px] font-medium px-2 py-0.5"
+                  style={{
+                    borderRadius: '20px',
+                    backgroundColor: '#F0F0F0',
+                    color: '#6B7280',
+                  }}
+                >
+                  {CATEGORY_LABELS[cost.category]}
+                </span>
+                <span className="text-xs text-slate-400">毎月{cost.billingDay}日</span>
+              </div>
+
+              {/* 年齢トリガーバッジ */}
+              {cost.ageTriggers && cost.ageTriggers.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  {cost.ageTriggers.map((trigger, i) => (
+                    <div
+                      key={i}
+                      className="inline-flex items-center gap-1 mr-2 text-xs px-2.5 py-1"
+                      style={{
+                        backgroundColor: '#FDEBD0',
+                        color: '#E67E22',
+                        borderRadius: '20px',
+                      }}
+                    >
+                      <span>⚡</span>
+                      <span>{trigger.description}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ))}

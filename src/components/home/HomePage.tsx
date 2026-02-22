@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PageHeader } from '../layout/PageHeader';
 import { BudgetCard } from './BudgetCard';
 import { CategoryChart } from './CategoryChart';
 import { RecentTransactions } from './RecentTransactions';
@@ -55,26 +54,37 @@ export function HomePage() {
 
   return (
     <div className="px-4 pb-4">
-      <PageHeader
-        title="Kakeibo AI"
-        subtitle="概算家計管理"
-        rightAction={
+      {/* ヘッダー: 月ナビゲーション + 設定ギア */}
+      <header className="sticky top-0 z-40 pt-4 pb-2 backdrop-blur-sm"
+        style={{ backgroundColor: 'rgba(245, 245, 245, 0.95)' }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => navigateMonth(-1)}
+              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              ←
+            </button>
+            <span className="text-lg font-bold" style={{ color: '#1E3A5F' }}>
+              {formatMonthJa(currentMonth)}
+            </span>
+            <button
+              onClick={() => navigateMonth(1)}
+              className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              →
+            </button>
+          </div>
           <button
-            onClick={() => navigate('/input')}
-            className="bg-primary-600 text-white w-10 h-10 rounded-full flex items-center justify-center text-xl shadow-lg"
+            onClick={() => navigate('/knowledge')}
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600"
           >
-            +
+            ⚙️
           </button>
-        }
-      />
+        </div>
+      </header>
 
-      {/* 月切り替え */}
-      <div className="flex items-center justify-center gap-4 mb-4">
-        <button onClick={() => navigateMonth(-1)} className="text-slate-400 p-2">←</button>
-        <span className="text-lg font-bold">{formatMonthJa(currentMonth)}</span>
-        <button onClick={() => navigateMonth(1)} className="text-slate-400 p-2">→</button>
-      </div>
-
+      {/* ヒーローカード: 残り使える金額 */}
       <BudgetCard
         monthlyIncome={monthlyIncome}
         totalExpense={summary?.totalExpense || 0}
@@ -84,12 +94,17 @@ export function HomePage() {
         comparedToPrevMonth={summary?.comparedToPrevMonth || 0}
       />
 
+      {/* カテゴリ別支出 */}
       {summary && summary.categoryBreakdown.length > 0 && (
         <div className="mt-4">
-          <CategoryChart breakdown={summary.categoryBreakdown} />
+          <CategoryChart
+            breakdown={summary.categoryBreakdown}
+            onViewDetail={() => navigate('/transactions')}
+          />
         </div>
       )}
 
+      {/* 最近の記録 */}
       <div className="mt-4">
         <RecentTransactions month={currentMonth} />
       </div>

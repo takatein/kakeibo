@@ -3,7 +3,7 @@ import { PageHeader } from '../layout/PageHeader';
 import { TransactionItem } from './TransactionItem';
 import { EditTransactionModal } from './EditTransactionModal';
 import { getTransactions, deleteTransaction, updateTransaction } from '../../api/transactions';
-import { formatMonth, formatMonthJa } from '../../utils/format';
+import { formatMonth, formatMonthJa, formatCurrency } from '../../utils/format';
 import type { Transaction } from '../../types';
 
 export function TransactionsPage() {
@@ -52,15 +52,20 @@ export function TransactionsPage() {
     <div className="px-4 pb-4">
       <PageHeader title="記録一覧" />
 
+      {/* 月ナビゲーション */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => navigateMonth(-1)} className="text-slate-400 p-2">←</button>
+        <button onClick={() => navigateMonth(-1)}
+          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600">←</button>
         <div className="text-center">
-          <span className="text-lg font-bold">{formatMonthJa(currentMonth)}</span>
+          <span className="text-lg font-bold" style={{ color: '#1E3A5F' }}>
+            {formatMonthJa(currentMonth)}
+          </span>
           <p className="text-xs text-slate-400">
-            {transactions.length}件 ・ 合計 ¥{totalAmount.toLocaleString()}
+            {transactions.length}件 ・ 合計 {formatCurrency(totalAmount)}
           </p>
         </div>
-        <button onClick={() => navigateMonth(1)} className="text-slate-400 p-2">→</button>
+        <button onClick={() => navigateMonth(1)}
+          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600">→</button>
       </div>
 
       {isLoading ? (
