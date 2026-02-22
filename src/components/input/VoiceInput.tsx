@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { LuMic, LuSquare } from 'react-icons/lu';
 
 interface VoiceInputProps {
   onSubmit: (text: string) => Promise<void>;
@@ -129,7 +130,7 @@ export function VoiceInput({ onSubmit }: VoiceInputProps) {
       <div className="card text-center py-12">
         <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"
           style={{ backgroundColor: '#D6E4F0' }}>
-          🎤
+          <LuMic size={28} color="#1E3A5F" />
         </div>
         <p className="text-slate-500 text-sm mb-2">お使いのブラウザは音声認識に対応していません</p>
         <p className="text-slate-400 text-xs">
@@ -168,9 +169,9 @@ export function VoiceInput({ onSubmit }: VoiceInputProps) {
             {state === 'processing' ? (
               <span className="inline-block w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : state === 'listening' ? (
-              '⏹'
+              <LuSquare size={24} />
             ) : (
-              '🎤'
+              <LuMic size={28} />
             )}
           </button>
         </div>

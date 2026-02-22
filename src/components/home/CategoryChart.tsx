@@ -1,23 +1,41 @@
+import type { IconType } from 'react-icons';
+import {
+  LuCookingPot,
+  LuUtensils,
+  LuWine,
+  LuShoppingBag,
+  LuBaby,
+  LuGraduationCap,
+  LuMapPin,
+  LuPlane,
+  LuStethoscope,
+  LuLightbulb,
+  LuShield,
+  LuHome,
+  LuCar,
+  LuGamepad2,
+  LuMoreHorizontal,
+} from 'react-icons/lu';
 import { CATEGORY_COLORS, type CategoryBreakdown } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
 /** カテゴリアイコンマッピング */
-const CATEGORY_ICONS: Record<string, string> = {
-  food_home: '🍳',
-  food_restaurant: '🍽',
-  food_premium: '🥂',
-  daily_goods: '🧴',
-  children: '👶',
-  education: '📖',
-  outing: '🎡',
-  travel: '✈️',
-  medical: '🏥',
-  utility: '💡',
-  insurance: '🛡',
-  loan: '🏠',
-  car: '🚗',
-  hobby: '🎮',
-  other: '•••',
+const CATEGORY_ICONS: Record<string, IconType> = {
+  food_home: LuCookingPot,
+  food_restaurant: LuUtensils,
+  food_premium: LuWine,
+  daily_goods: LuShoppingBag,
+  children: LuBaby,
+  education: LuGraduationCap,
+  outing: LuMapPin,
+  travel: LuPlane,
+  medical: LuStethoscope,
+  utility: LuLightbulb,
+  insurance: LuShield,
+  loan: LuHome,
+  car: LuCar,
+  hobby: LuGamepad2,
+  other: LuMoreHorizontal,
 };
 
 const FIXED_CATEGORIES = ['utility', 'insurance', 'loan', 'education'];
@@ -49,13 +67,14 @@ export function CategoryChart({ breakdown, onViewDetail }: CategoryChartProps) {
         {breakdown.slice(0, 6).map((item) => {
           const isFixed = FIXED_CATEGORIES.includes(item.category);
           const barPercent = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
+          const Icon = CATEGORY_ICONS[item.category] || LuMoreHorizontal;
 
           return (
             <div key={item.category} className={isFixed ? 'opacity-75' : ''}>
               <div className="flex items-center gap-3">
                 {/* アイコン + ラベル */}
                 <div className="flex items-center gap-2 w-24 shrink-0">
-                  <span className="text-base">{CATEGORY_ICONS[item.category] || '•••'}</span>
+                  <Icon size={16} color={isFixed ? '#94A3B8' : CATEGORY_COLORS[item.category]} />
                   <span className="text-xs text-slate-600 truncate">{item.label}</span>
                 </div>
 

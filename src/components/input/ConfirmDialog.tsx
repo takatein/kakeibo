@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LuStore, LuTag, LuCalendar } from 'react-icons/lu';
 import { CATEGORY_LABELS, CATEGORY_COLORS, type Category, type ConfirmItem } from '../../types';
 import { formatCurrency, formatDateJa } from '../../utils/format';
 
@@ -72,7 +73,7 @@ export function ConfirmDialog({ items: initialItems, onConfirm, onCancel, isSavi
             {item.shopName && (
               <div className="flex items-center justify-between py-3 border-b border-white/50">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm">🏪</span>
+                  <LuStore size={14} className="text-slate-400" />
                   <span className="text-sm text-slate-500">店名</span>
                 </div>
                 <span className="text-sm font-medium" style={{ color: '#1E3A5F' }}>
@@ -123,7 +124,7 @@ export function ConfirmDialog({ items: initialItems, onConfirm, onCancel, isSavi
             {/* カテゴリ */}
             <div className="flex items-center justify-between py-3 border-b border-white/50">
               <div className="flex items-center gap-2">
-                <span className="text-sm">🏷</span>
+                <LuTag size={14} className="text-slate-400" />
                 <span className="text-sm text-slate-500">カテゴリ</span>
               </div>
               <button
@@ -175,7 +176,7 @@ export function ConfirmDialog({ items: initialItems, onConfirm, onCancel, isSavi
             {/* 日付 */}
             <div className="flex items-center justify-between py-3 border-b border-white/50">
               <div className="flex items-center gap-2">
-                <span className="text-sm">📅</span>
+                <LuCalendar size={14} className="text-slate-400" />
                 <span className="text-sm text-slate-500">日付</span>
               </div>
               <span className="text-sm font-medium" style={{ color: '#1E3A5F' }}>

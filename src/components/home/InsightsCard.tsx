@@ -1,5 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import type { IconType } from 'react-icons';
+import {
+  LuSchool,
+  LuBookOpen,
+  LuBuilding2,
+  LuGraduationCap,
+  LuTrendingDown,
+  LuRefreshCw,
+  LuAlertTriangle,
+  LuBrain,
+  LuHome,
+} from 'react-icons/lu';
 import { getFamilySettings } from '../../api/family-settings';
 import { getFixedCosts } from '../../api/fixed-costs';
 import { getApprovedPatterns } from '../../api/knowledge';
@@ -8,7 +20,7 @@ import type { FamilySettings, FixedCost, PatternKnowledge } from '../../types';
 
 interface Insight {
   type: 'warning' | 'info' | 'success';
-  icon: string;
+  icon: IconType;
   title: string;
   body: string;
   action?: string;
@@ -46,28 +58,32 @@ export function InsightsCard() {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-bold px-1" style={{ color: '#1E3A5F' }}>AIインサイト</h3>
-      {insights.map((insight, i) => (
-        <button
-          key={i}
-          onClick={() => insight.link && navigate(insight.link)}
-          className="card w-full text-left flex items-start gap-3"
-          style={{
-            borderLeft: `4px solid ${
-              insight.type === 'warning' ? '#E67E22' :
-              insight.type === 'success' ? '#059669' : '#2E86C1'
-            }`,
-          }}
-        >
-          <span className="text-lg shrink-0 mt-0.5">{insight.icon}</span>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium" style={{ color: '#1E3A5F' }}>{insight.title}</p>
-            <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{insight.body}</p>
-          </div>
-          {insight.link && (
-            <span className="text-slate-300 shrink-0 mt-1">›</span>
-          )}
-        </button>
-      ))}
+      {insights.map((insight, i) => {
+        const Icon = insight.icon;
+        const iconColor =
+          insight.type === 'warning' ? '#E67E22' :
+          insight.type === 'success' ? '#059669' : '#2E86C1';
+
+        return (
+          <button
+            key={i}
+            onClick={() => insight.link && navigate(insight.link)}
+            className="card w-full text-left flex items-start gap-3"
+            style={{
+              borderLeft: `4px solid ${iconColor}`,
+            }}
+          >
+            <Icon size={18} color={iconColor} className="shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium" style={{ color: '#1E3A5F' }}>{insight.title}</p>
+              <p className="text-xs text-slate-400 mt-0.5 leading-relaxed">{insight.body}</p>
+            </div>
+            {insight.link && (
+              <span className="text-slate-300 shrink-0 mt-1">›</span>
+            )}
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -95,7 +111,7 @@ function buildInsights(
       if (futureAge === 6) {
         insights.push({
           type: 'info',
-          icon: '🎒',
+          icon: LuSchool,
           title: `${childName} 小学校入学まであと${yearsFromNow}年`,
           body: '教育費の準備を検討しましょう',
           link: '/simulator',
@@ -103,7 +119,7 @@ function buildInsights(
       } else if (futureAge === 12) {
         insights.push({
           type: 'warning',
-          icon: '📚',
+          icon: LuBookOpen,
           title: `${childName} 中学入学まであと${yearsFromNow}年`,
           body: `私立の場合、年間約${formatManYen(1200000)}の教育費がかかります`,
           link: '/simulator',
@@ -111,7 +127,7 @@ function buildInsights(
       } else if (futureAge === 15) {
         insights.push({
           type: 'info',
-          icon: '🏫',
+          icon: LuBuilding2,
           title: `${childName} 高校入学まであと${yearsFromNow}年`,
           body: `年間約${formatManYen(1000000)}の教育費を見込んでください`,
           link: '/simulator',
@@ -119,7 +135,7 @@ function buildInsights(
       } else if (futureAge === 18) {
         insights.push({
           type: 'warning',
-          icon: '🎓',
+          icon: LuGraduationCap,
           title: `${childName} 大学入学まであと${yearsFromNow}年`,
           body: `年間約${formatManYen(1750000)}。入学金も含めると初年度は高額になります`,
           link: '/simulator',
@@ -132,7 +148,7 @@ function buildInsights(
   if (selfAge >= 53 && selfAge < 55) {
     insights.push({
       type: 'warning',
-      icon: '📉',
+      icon: LuTrendingDown,
       title: '役職定年が近づいています',
       body: `${55 - selfAge}年後に年収が約10%減少する可能性があります。シミュレーターで影響を確認しましょう`,
       link: '/simulator',
@@ -142,7 +158,7 @@ function buildInsights(
   if (selfAge >= 58 && selfAge < 60) {
     insights.push({
       type: 'warning',
-      icon: '🔄',
+      icon: LuRefreshCw,
       title: '再雇用への移行が近づいています',
       body: '60歳以降は年収が大幅に変わります。資金計画を見直しましょう',
       link: '/simulator',
@@ -155,7 +171,7 @@ function buildInsights(
   if (monthlyIncome > 0 && monthlyFixed / monthlyIncome > 0.5) {
     insights.push({
       type: 'warning',
-      icon: '⚠️',
+      icon: LuAlertTriangle,
       title: '固定費が収入の50%を超えています',
       body: `固定費 ${formatCurrency(monthlyFixed)}/月は収入の${Math.round(monthlyFixed / monthlyIncome * 100)}%。見直しを検討しましょう`,
       link: '/knowledge',
@@ -166,7 +182,7 @@ function buildInsights(
   if (patterns.length > 0) {
     insights.push({
       type: 'success',
-      icon: '🧠',
+      icon: LuBrain,
       title: `${patterns.length}件のパターンを学習済み`,
       body: 'AIがあなたの買い物パターンを理解しています。分類精度が向上しています',
       link: '/knowledge',
@@ -182,7 +198,7 @@ function buildInsights(
     if (completionAge > 60) {
       insights.push({
         type: 'warning',
-        icon: '🏠',
+        icon: LuHome,
         title: `住宅ローン完済は${completionAge}歳`,
         body: '定年後もローンが残ります。繰り上げ返済を検討しましょう',
         link: '/simulator',
@@ -190,7 +206,7 @@ function buildInsights(
     } else if (yearsLeft <= 5) {
       insights.push({
         type: 'success',
-        icon: '🏠',
+        icon: LuHome,
         title: `住宅ローン完済まであと${yearsLeft}年`,
         body: `完済後は月${formatCurrency(settings.loan.monthlyPayment)}の余裕が生まれます`,
         link: '/simulator',

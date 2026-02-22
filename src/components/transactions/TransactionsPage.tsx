@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { LuChevronLeft, LuChevronRight } from 'react-icons/lu';
 import { PageHeader } from '../layout/PageHeader';
 import { TransactionItem } from './TransactionItem';
 import { EditTransactionModal } from './EditTransactionModal';
@@ -55,7 +56,9 @@ export function TransactionsPage() {
       {/* 月ナビゲーション */}
       <div className="flex items-center justify-between mb-4">
         <button onClick={() => navigateMonth(-1)}
-          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600">←</button>
+          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600">
+          <LuChevronLeft size={20} />
+        </button>
         <div className="text-center">
           <span className="text-lg font-bold" style={{ color: '#1E3A5F' }}>
             {formatMonthJa(currentMonth)}
@@ -65,7 +68,9 @@ export function TransactionsPage() {
           </p>
         </div>
         <button onClick={() => navigateMonth(1)}
-          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600">→</button>
+          className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600">
+          <LuChevronRight size={20} />
+        </button>
       </div>
 
       {isLoading ? (

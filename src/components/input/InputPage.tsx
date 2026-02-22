@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LuCamera, LuMessageSquare, LuMic, LuX } from 'react-icons/lu';
+import type { IconType } from 'react-icons';
 import { TextInput } from './TextInput';
 import { VoiceInput } from './VoiceInput';
 import { ReceiptInput } from './ReceiptInput';
@@ -82,9 +84,9 @@ export function InputPage() {
           <h1 className="text-xl font-bold" style={{ color: '#1E3A5F' }}>支出を記録</h1>
           <button
             onClick={() => navigate('/')}
-            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 text-lg"
+            className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600"
           >
-            ✕
+            <LuX size={20} />
           </button>
         </div>
       </header>
@@ -92,10 +94,10 @@ export function InputPage() {
       {/* モードタブ: ピル型トグル */}
       <div className="flex gap-1 p-1 mb-5" style={{ backgroundColor: '#F0F0F0', borderRadius: '12px' }}>
         {([
-          { key: 'camera' as InputMode, label: '撮影', icon: '📷' },
-          { key: 'text' as InputMode, label: 'テキスト', icon: '💬' },
-          { key: 'voice' as InputMode, label: '音声', icon: '🎤' },
-        ]).map(({ key, label, icon }) => (
+          { key: 'camera' as InputMode, label: '撮影', icon: LuCamera },
+          { key: 'text' as InputMode, label: 'テキスト', icon: LuMessageSquare },
+          { key: 'voice' as InputMode, label: '音声', icon: LuMic },
+        ] as { key: InputMode; label: string; icon: IconType }[]).map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setMode(key)}
@@ -107,7 +109,7 @@ export function InputPage() {
               boxShadow: mode === key ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
             }}
           >
-            <span>{icon}</span>
+            <Icon size={16} />
             {label}
           </button>
         ))}

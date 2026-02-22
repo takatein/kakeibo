@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { LuCamera, LuImage, LuMaximize, LuSun, LuRuler } from 'react-icons/lu';
 import type { ConfirmItem, Category } from '../../types';
 import { generateId } from '../../utils/id';
 import { formatDate } from '../../utils/format';
@@ -254,7 +255,7 @@ export function ReceiptInput({ onResult }: ReceiptInputProps) {
               boxShadow: '0 4px 12px rgba(30, 58, 95, 0.3)',
             }}
           >
-            📷
+            <LuCamera size={28} />
           </div>
         </button>
         <p className="text-sm font-medium" style={{ color: '#1E3A5F' }}>
@@ -270,7 +271,7 @@ export function ReceiptInput({ onResult }: ReceiptInputProps) {
         onClick={() => fileInputRef.current?.click()}
         className="btn-secondary w-full flex items-center justify-center gap-2"
       >
-        <span>🖼</span>
+        <LuImage size={16} />
         ギャラリーから選択
       </button>
 
@@ -279,15 +280,15 @@ export function ReceiptInput({ onResult }: ReceiptInputProps) {
         <h4 className="text-xs font-bold mb-2" style={{ color: '#1E3A5F' }}>きれいに撮るコツ</h4>
         <ul className="space-y-1.5 text-xs text-slate-500">
           <li className="flex items-start gap-2">
-            <span className="shrink-0">📐</span>
+            <LuMaximize size={14} className="shrink-0 mt-0.5" />
             <span>レシート全体が写るように撮影</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="shrink-0">💡</span>
+            <LuSun size={14} className="shrink-0 mt-0.5" />
             <span>明るい場所で、影がかからないように</span>
           </li>
           <li className="flex items-start gap-2">
-            <span className="shrink-0">📏</span>
+            <LuRuler size={14} className="shrink-0 mt-0.5" />
             <span>平らな場所に置いてまっすぐ撮影</span>
           </li>
         </ul>

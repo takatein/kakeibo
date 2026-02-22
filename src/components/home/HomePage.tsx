@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LuChevronLeft, LuChevronRight, LuSettings } from 'react-icons/lu';
 import { BudgetCard } from './BudgetCard';
 import { CategoryChart } from './CategoryChart';
 import { RecentTransactions } from './RecentTransactions';
@@ -64,7 +65,7 @@ export function HomePage() {
               onClick={() => navigateMonth(-1)}
               className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
             >
-              ←
+              <LuChevronLeft size={20} />
             </button>
             <span className="text-lg font-bold" style={{ color: '#1E3A5F' }}>
               {formatMonthJa(currentMonth)}
@@ -73,14 +74,14 @@ export function HomePage() {
               onClick={() => navigateMonth(1)}
               className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
             >
-              →
+              <LuChevronRight size={20} />
             </button>
           </div>
           <button
             onClick={() => navigate('/knowledge')}
             className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600"
           >
-            ⚙️
+            <LuSettings size={20} />
           </button>
         </div>
       </header>

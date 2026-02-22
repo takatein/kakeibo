@@ -1,3 +1,4 @@
+import { LuZap } from 'react-icons/lu';
 import { CATEGORY_LABELS, CATEGORY_COLORS, type FixedCost } from '../../types';
 import { formatCurrency } from '../../utils/format';
 
@@ -72,7 +73,7 @@ export function FixedCostList({ costs, onToggle, onDelete }: FixedCostListProps)
                         borderRadius: '20px',
                       }}
                     >
-                      <span>⚡</span>
+                      <LuZap size={12} />
                       <span>{trigger.description}</span>
                     </div>
                   ))}

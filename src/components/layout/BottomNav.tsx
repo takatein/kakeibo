@@ -1,17 +1,19 @@
 import { useLocation, useNavigate } from 'react-router-dom';
+import { LuHome, LuPencil, LuClipboardList, LuBookOpen, LuTrendingUp } from 'react-icons/lu';
+import type { IconType } from 'react-icons';
 
 interface NavItem {
   path: string;
   label: string;
-  icon: string;
+  icon: IconType;
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'ホーム', icon: '🏠' },
-  { path: '/input', label: '入力', icon: '✏️' },
-  { path: '/transactions', label: '記録', icon: '📋' },
-  { path: '/knowledge', label: 'ナレッジ', icon: '📚' },
-  { path: '/simulator', label: '将来', icon: '📈' },
+  { path: '/', label: 'ホーム', icon: LuHome },
+  { path: '/input', label: '入力', icon: LuPencil },
+  { path: '/transactions', label: '記録', icon: LuClipboardList },
+  { path: '/knowledge', label: 'ナレッジ', icon: LuBookOpen },
+  { path: '/simulator', label: '将来', icon: LuTrendingUp },
 ];
 
 export function BottomNav() {
@@ -24,13 +26,17 @@ export function BottomNav() {
       <div className="flex items-center justify-around h-16 max-w-lg mx-auto">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const Icon = item.icon;
           return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
               className="flex flex-col items-center gap-0.5 flex-1 py-2 transition-colors"
             >
-              <span className="text-xl">{item.icon}</span>
+              <Icon
+                size={22}
+                color={isActive ? '#1E3A5F' : '#9CA3AF'}
+              />
               <span
                 className="text-[10px] font-medium"
                 style={{ color: isActive ? '#1E3A5F' : '#9CA3AF' }}

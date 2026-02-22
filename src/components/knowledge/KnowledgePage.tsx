@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { LuChevronLeft, LuBrain, LuPlus } from 'react-icons/lu';
 import { PageHeader } from '../layout/PageHeader';
 import { FixedCostList } from './FixedCostList';
 import { AddFixedCostModal } from './AddFixedCostModal';
@@ -118,7 +119,9 @@ export function KnowledgePage() {
       <PageHeader
         title="ナレッジ管理"
         leftAction={
-          <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600">←</button>
+          <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-slate-600">
+            <LuChevronLeft size={20} />
+          </button>
         }
       />
 
@@ -174,7 +177,7 @@ export function KnowledgePage() {
               boxShadow: '0 4px 12px rgba(30, 58, 95, 0.4)',
             }}
           >
-            +
+            <LuPlus size={24} />
           </button>
 
           {pendingPatterns.length > 0 && (
@@ -316,7 +319,7 @@ export function KnowledgePage() {
           {/* 空状態 */}
           {pendingPatterns.length === 0 && approvedPatterns.length === 0 && shopRuleCount === 0 && (
             <div className="card text-center py-10">
-              <div className="text-3xl mb-3">🧠</div>
+              <div className="text-3xl mb-3"><LuBrain size={32} color="#1E3A5F" /></div>
               <p className="text-sm text-slate-500 mb-1">まだパターンがありません</p>
               <p className="text-xs text-slate-400">
                 支出を記録していくと、AIが自動的に<br />
