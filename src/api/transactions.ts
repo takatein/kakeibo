@@ -5,6 +5,8 @@ import type {
 } from '../types';
 import { generateId } from '../utils/id';
 import { formatDate, formatMonth } from '../utils/format';
+import { matchPattern } from '../utils/pattern-analyzer';
+import type { PatternKnowledge, ContextKnowledge } from '../types';
 
 const STORAGE_KEY = 'kakeibo_transactions';
 const FAMILY_ID = 'demo-family'; // TODO: Cognito familyIdから取得
@@ -271,13 +273,44 @@ function mockCategorize(input: string): MockResult {
 
   let category: Category = 'other';
   let storeName: string | undefined;
+  let confidence = 0.65;
 
-  for (const rule of rules) {
-    if (rule.keywords.some(kw => input.includes(kw))) {
-      category = rule.category;
-      const storeMatch = rule.keywords.find(kw => input.includes(kw) && kw.length > 2);
-      if (storeMatch) storeName = storeMatch;
-      break;
+  // 1. 承認済みパターンマッチ（最高優先度 §5-2）
+  const patternsStr = localStorage.getItem('kakeibo_patterns');
+  const patterns: PatternKnowledge[] = patternsStr ? JSON.parse(patternsStr) : [];
+  const patternMatch = matchPattern(input, amount, patterns);
+
+  // 2. コンテキストルールマッチ（§5-1 店舗→カテゴリ）
+  const contextStr = localStorage.getItem('kakeibo_context_rules');
+  const context: ContextKnowledge = contextStr ? JSON.parse(contextStr) : { shopToCategory: {}, keywordToCategory: {} };
+
+  if (patternMatch) {
+    // パターンマッチが最優先
+    category = patternMatch.category;
+    confidence = patternMatch.confidence;
+  } else {
+    // コンテキストルール → キーワードルール
+    let contextMatched = false;
+    for (const [shop, cat] of Object.entries(context.shopToCategory)) {
+      if (input.includes(shop)) {
+        category = cat;
+        storeName = shop;
+        confidence = 0.9;
+        contextMatched = true;
+        break;
+      }
+    }
+
+    if (!contextMatched) {
+      for (const rule of rules) {
+        if (rule.keywords.some(kw => input.includes(kw))) {
+          category = rule.category;
+          const storeMatch = rule.keywords.find(kw => input.includes(kw) && kw.length > 2);
+          if (storeMatch) storeName = storeMatch;
+          confidence = storeName ? 0.85 : 0.65;
+          break;
+        }
+      }
     }
   }
 
@@ -300,11 +333,11 @@ function mockCategorize(input: string): MockResult {
     .slice(0, 3) as Category[];
 
   return {
-    shopName,
+    shopName: storeName,
     amount,
     category,
     categoryLabel: categoryLabels[category],
-    confidence: storeName ? 0.85 : 0.65,
+    confidence,
     date,
     memo: input,
     alternativeCategories: alternatives.map(c => ({

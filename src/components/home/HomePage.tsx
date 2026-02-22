@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { BudgetCard } from './BudgetCard';
 import { CategoryChart } from './CategoryChart';
 import { RecentTransactions } from './RecentTransactions';
+import { InsightsCard } from './InsightsCard';
 import { getMonthlySummary } from '../../api/transactions';
 import { getFamilySettings, getTotalMonthlyIncome } from '../../api/family-settings';
 import { formatMonthJa, formatMonth } from '../../utils/format';
@@ -103,6 +104,11 @@ export function HomePage() {
           />
         </div>
       )}
+
+      {/* AIインサイト */}
+      <div className="mt-4">
+        <InsightsCard />
+      </div>
 
       {/* 最近の記録 */}
       <div className="mt-4">

@@ -98,5 +98,5 @@ npx cdk deploy
 
 - [x] **Phase 1 (MVP)**: 認証・ホーム画面・固定費マスタ・テキスト入力→AI分類→保存
 - [x] **Phase 2**: レシート撮影・OCR (モックOCR / Bedrock Vision対応準備)・音声入力 (Web Speech API)
-- [ ] **Phase 3**: AgentCore Memory パターン学習・ナレッジ自動登録
-- [ ] **Phase 4**: Simulator エージェント・65歳まで貯蓄グラフ・教育費ピーク警告
+- [x] **Phase 3**: AgentCore Memory パターン学習・ナレッジ自動登録・コンテキストルール・AI分類統合
+- [x] **Phase 4**: AIインサイト通知・教育費ピーク警告・ライフイベント予測・固定費最適化提案
