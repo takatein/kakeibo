@@ -45,7 +45,7 @@ export function RecentTransactions({ month }: RecentTransactionsProps) {
       <div className="space-y-2">
         {transactions.map((txn) => (
           <div
-            key={txn.id}
+            key={txn.txnId}
             className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0"
           >
             <div
@@ -56,10 +56,11 @@ export function RecentTransactions({ month }: RecentTransactionsProps) {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium text-slate-700 truncate">
-                {txn.storeName || txn.memo || CATEGORY_LABELS[txn.category]}
+                {txn.shopName || txn.memo || CATEGORY_LABELS[txn.category]}
               </p>
               <p className="text-xs text-slate-400">
                 {formatDateJa(txn.date)} ・ {CATEGORY_LABELS[txn.category]}
+                {txn.isFixed && ' ・ 固定'}
               </p>
             </div>
             <p className="text-sm font-bold text-slate-700 shrink-0">

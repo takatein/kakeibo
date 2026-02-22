@@ -1,4 +1,4 @@
-import { CATEGORY_LABELS, CATEGORY_COLORS, type CategoryBreakdown } from '../../types';
+import { CATEGORY_COLORS, type CategoryBreakdown } from '../../types';
 import { formatCurrency, formatPercent } from '../../utils/format';
 
 interface CategoryChartProps {
@@ -12,17 +12,20 @@ export function CategoryChart({ breakdown }: CategoryChartProps) {
     <div className="card">
       <h3 className="text-sm font-bold text-slate-700 mb-3">カテゴリ別支出</h3>
 
-      {/* 横棒グラフ風の表示 */}
+      {/* 設計書 §10-3 横棒グラフ風。タップで明細へ */}
       <div className="space-y-2">
         {breakdown.slice(0, 8).map((item) => (
           <div key={item.category}>
             <div className="flex items-center justify-between mb-0.5">
-              <span className="text-xs text-slate-600">
-                {CATEGORY_LABELS[item.category]}
-              </span>
-              <span className="text-xs font-medium text-slate-700">
-                {formatCurrency(item.amount)}
-              </span>
+              <span className="text-xs text-slate-600">{item.label}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-slate-700">
+                  {formatCurrency(item.amount)}
+                </span>
+                {item.budgetAmount && item.amount > item.budgetAmount && (
+                  <span className="text-[10px] text-red-500 font-medium">超過</span>
+                )}
+              </div>
             </div>
             <div className="relative h-2 bg-slate-100 rounded-full overflow-hidden">
               <div

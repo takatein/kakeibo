@@ -1,7 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
-  PutCommand,
   QueryCommand,
   UpdateCommand,
   DeleteCommand,
@@ -9,7 +8,7 @@ import {
 
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
-const TABLE_NAME = process.env.TRANSACTIONS_TABLE;
+const TABLE_NAME = process.env.MAIN_TABLE;
 
 function response(statusCode, body) {
   return {
@@ -22,82 +21,82 @@ function response(statusCode, body) {
   };
 }
 
-function getUserId(event) {
-  return event.requestContext?.authorizer?.claims?.sub || 'demo-user';
+/** 設計書 §3: Cognito custom:familyId から PK を取得 */
+function getFamilyPK(event) {
+  const familyId = event.requestContext?.authorizer?.claims?.['custom:familyId'] || 'demo-family';
+  return `family_${familyId}`;
 }
 
 export async function handler(event) {
   const method = event.httpMethod;
-  const userId = getUserId(event);
+  const pk = getFamilyPK(event);
 
   try {
     switch (method) {
       case 'GET':
-        return await getTransactions(userId, event.queryStringParameters);
-      case 'POST':
-        return await createTransaction(userId, JSON.parse(event.body));
+        return await getTransactions(pk, event.queryStringParameters);
       case 'PUT':
-        return await updateTransaction(userId, event.pathParameters?.id, JSON.parse(event.body));
+        return await updateTransaction(pk, event.pathParameters?.txnId, JSON.parse(event.body));
       case 'DELETE':
-        return await deleteTransaction(userId, event.pathParameters?.id);
+        return await deleteTransaction(pk, event.pathParameters?.txnId);
       default:
         return response(405, { error: 'Method not allowed' });
     }
   } catch (err) {
     console.error('Error:', err);
-    return response(500, { error: 'Internal server error' });
+    return response(500, { error: 'Internal server error', code: 'E5001' });
   }
 }
 
-async function getTransactions(userId, params) {
+/**
+ * GET /transactions?month=2026-02
+ * PK = family_{familyId}, SK begins_with "txn#{month}"
+ */
+async function getTransactions(pk, params) {
   const month = params?.month;
   const queryParams = {
     TableName: TABLE_NAME,
-    KeyConditionExpression: 'userId = :uid',
-    ExpressionAttributeValues: { ':uid': userId },
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+    ExpressionAttributeValues: {
+      ':pk': pk,
+      ':prefix': month ? `txn#${month}` : 'txn#',
+    },
     ScanIndexForward: false,
   };
-
-  if (month) {
-    queryParams.KeyConditionExpression += ' AND begins_with(dateTxnId, :month)';
-    queryParams.ExpressionAttributeValues[':month'] = month;
-  }
 
   const result = await docClient.send(new QueryCommand(queryParams));
   return response(200, result.Items || []);
 }
 
-async function createTransaction(userId, body) {
-  const txnId = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
-  const now = new Date().toISOString();
+/**
+ * PUT /transactions/{txnId}
+ * カテゴリ変更・金額修正等
+ */
+async function updateTransaction(pk, txnId, body) {
+  if (!txnId) return response(400, { error: 'txnId is required' });
 
-  const item = {
-    userId,
-    dateTxnId: `${body.date}#${txnId}`,
-    categoryDate: `${body.category}#${body.date}`,
-    id: txnId,
-    date: body.date,
-    amount: body.amount,
-    category: body.category,
-    storeName: body.storeName || null,
-    memo: body.memo || null,
-    inputMethod: body.inputMethod || 'text',
-    inputBy: body.inputBy || 'husband',
-    isFixed: body.isFixed || false,
-    createdAt: now,
-    updatedAt: now,
-  };
+  // txnId からSKを探す（txnIdで検索が必要）
+  const findResult = await docClient.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+    FilterExpression: 'txnId = :txnId',
+    ExpressionAttributeValues: {
+      ':pk': pk,
+      ':prefix': 'txn#',
+      ':txnId': txnId,
+    },
+  }));
 
-  await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: item }));
-  return response(201, item);
-}
+  if (!findResult.Items || findResult.Items.length === 0) {
+    return response(404, { error: 'Transaction not found', code: 'E4001' });
+  }
 
-async function updateTransaction(userId, id, body) {
+  const existingItem = findResult.Items[0];
   const expressions = [];
   const names = {};
-  const values = { ':uid': userId };
+  const values = {};
 
-  const updatableFields = ['amount', 'category', 'storeName', 'memo', 'date'];
+  const updatableFields = ['amount', 'category', 'shopName', 'memo', 'date'];
   for (const field of updatableFields) {
     if (body[field] !== undefined) {
       expressions.push(`#${field} = :${field}`);
@@ -110,13 +109,49 @@ async function updateTransaction(userId, id, body) {
   names['#updatedAt'] = 'updatedAt';
   values[':updatedAt'] = new Date().toISOString();
 
-  // Note: In production, you'd need to know the exact sort key
-  // This is simplified for the MVP
-  return response(200, { message: 'Updated', id });
+  // GSI1SK も更新（カテゴリ変更時）
+  if (body.category) {
+    expressions.push('#GSI1SK = :gsi1sk');
+    names['#GSI1SK'] = 'GSI1SK';
+    values[':gsi1sk'] = `${body.category}#${existingItem.date}`;
+  }
+
+  await docClient.send(new UpdateCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: pk, SK: existingItem.SK },
+    UpdateExpression: `SET ${expressions.join(', ')}`,
+    ExpressionAttributeNames: names,
+    ExpressionAttributeValues: values,
+  }));
+
+  return response(200, { message: 'Updated', txnId });
 }
 
-async function deleteTransaction(userId, id) {
-  // Note: In production, you'd need to know the exact sort key
-  // This is simplified for the MVP
-  return response(200, { message: 'Deleted', id });
+/**
+ * DELETE /transactions/{txnId}
+ */
+async function deleteTransaction(pk, txnId) {
+  if (!txnId) return response(400, { error: 'txnId is required' });
+
+  const findResult = await docClient.send(new QueryCommand({
+    TableName: TABLE_NAME,
+    KeyConditionExpression: 'PK = :pk AND begins_with(SK, :prefix)',
+    FilterExpression: 'txnId = :txnId',
+    ExpressionAttributeValues: {
+      ':pk': pk,
+      ':prefix': 'txn#',
+      ':txnId': txnId,
+    },
+  }));
+
+  if (!findResult.Items || findResult.Items.length === 0) {
+    return response(404, { error: 'Transaction not found', code: 'E4001' });
+  }
+
+  await docClient.send(new DeleteCommand({
+    TableName: TABLE_NAME,
+    Key: { PK: pk, SK: findResult.Items[0].SK },
+  }));
+
+  return response(200, { message: 'Deleted', txnId });
 }

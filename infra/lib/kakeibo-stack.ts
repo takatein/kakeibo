@@ -7,6 +7,8 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as iam from 'aws-cdk-lib/aws-iam';
+import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 
 export class KakeiboStack extends cdk.Stack {
@@ -14,37 +16,41 @@ export class KakeiboStack extends cdk.Stack {
     super(scope, id, props);
 
     // ========================================
-    // DynamoDB Tables
+    // DynamoDB Tables（設計書 §4 準拠）
+    // PK: family_{familyId} ベースの家族単位設計
     // ========================================
 
-    const transactionsTable = new dynamodb.Table(this, 'TransactionsTable', {
-      tableName: 'kakeibo-transactions',
-      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'dateTxnId', type: dynamodb.AttributeType.STRING },
+    // メインテーブル: 支出記録・固定費・家族設定を単一テーブルに集約
+    const mainTable = new dynamodb.Table(this, 'KakeiboMainTable', {
+      tableName: 'kakeibo-main',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
     });
 
-    // GSI: カテゴリ別検索
-    transactionsTable.addGlobalSecondaryIndex({
-      indexName: 'category-date-index',
-      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'categoryDate', type: dynamodb.AttributeType.STRING },
+    // GSI1: カテゴリ別・日付順検索
+    mainTable.addGlobalSecondaryIndex({
+      indexName: 'GSI1-category-date',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI1SK', type: dynamodb.AttributeType.STRING },
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    const fixedCostsTable = new dynamodb.Table(this, 'FixedCostsTable', {
-      tableName: 'kakeibo-fixed-costs',
-      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
-      sortKey: { name: 'costId', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+    // GSI2: 月別集計用
+    mainTable.addGlobalSecondaryIndex({
+      indexName: 'GSI2-month',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'GSI2SK', type: dynamodb.AttributeType.STRING },
+      projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    const familySettingsTable = new dynamodb.Table(this, 'FamilySettingsTable', {
-      tableName: 'kakeibo-family-settings',
-      partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
+    // ナレッジテーブル: AgentCore Memory（設計書 §5）
+    const knowledgeTable = new dynamodb.Table(this, 'KakeiboKnowledgeTable', {
+      tableName: 'kakeibo-knowledge',
+      partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'SK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
@@ -110,7 +116,7 @@ export class KakeiboStack extends cdk.Stack {
     });
 
     // ========================================
-    // Cognito
+    // Cognito（設計書 §3 準拠 - familyId ベース認証）
     // ========================================
 
     const userPool = new cognito.UserPool(this, 'KakeiboUserPool', {
@@ -120,6 +126,10 @@ export class KakeiboStack extends cdk.Stack {
       autoVerify: { email: true },
       standardAttributes: {
         fullname: { required: true, mutable: true },
+      },
+      customAttributes: {
+        familyId: new cognito.StringAttribute({ mutable: false }),
+        role: new cognito.StringAttribute({ mutable: true }),
       },
       passwordPolicy: {
         minLength: 8,
@@ -143,17 +153,37 @@ export class KakeiboStack extends cdk.Stack {
     });
 
     // ========================================
-    // Lambda Functions
+    // Lambda Functions（設計書 §9 API準拠）
     // ========================================
 
     const commonEnv = {
-      TRANSACTIONS_TABLE: transactionsTable.tableName,
-      FIXED_COSTS_TABLE: fixedCostsTable.tableName,
-      FAMILY_SETTINGS_TABLE: familySettingsTable.tableName,
+      MAIN_TABLE: mainTable.tableName,
+      KNOWLEDGE_TABLE: knowledgeTable.tableName,
       RECEIPT_BUCKET: receiptBucket.bucketName,
     };
 
-    // Transactions Lambda
+    // Input Handler: POST /input, POST /input/confirm（設計書 §9-1）
+    const inputLambda = new lambda.Function(this, 'InputFunction', {
+      functionName: 'kakeibo-input',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('lambda/input'),
+      environment: {
+        ...commonEnv,
+        BEDROCK_REGION: this.region,
+      },
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+    });
+
+    mainTable.grantReadWriteData(inputLambda);
+    knowledgeTable.grantReadData(inputLambda);
+    inputLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+      resources: ['*'],
+    }));
+
+    // Transactions Handler: GET /transactions（設計書 §9）
     const transactionsLambda = new lambda.Function(this, 'TransactionsFunction', {
       functionName: 'kakeibo-transactions',
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -164,48 +194,83 @@ export class KakeiboStack extends cdk.Stack {
       memorySize: 256,
     });
 
-    transactionsTable.grantReadWriteData(transactionsLambda);
+    mainTable.grantReadWriteData(transactionsLambda);
 
-    // Fixed Costs Lambda
-    const fixedCostsLambda = new lambda.Function(this, 'FixedCostsFunction', {
-      functionName: 'kakeibo-fixed-costs',
+    // Summary Handler: GET /summary（設計書 §9）
+    const summaryLambda = new lambda.Function(this, 'SummaryFunction', {
+      functionName: 'kakeibo-summary',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('lambda/fixed-costs'),
+      code: lambda.Code.fromAsset('lambda/summary'),
       environment: commonEnv,
       timeout: cdk.Duration.seconds(10),
       memorySize: 256,
     });
 
-    fixedCostsTable.grantReadWriteData(fixedCostsLambda);
+    mainTable.grantReadData(summaryLambda);
 
-    // AI Categorize Lambda
-    const aiCategorizeLambda = new lambda.Function(this, 'AiCategorizeFunction', {
-      functionName: 'kakeibo-ai-categorize',
+    // Knowledge Handler: GET/POST /knowledge（設計書 §9）
+    const knowledgeLambda = new lambda.Function(this, 'KnowledgeFunction', {
+      functionName: 'kakeibo-knowledge',
       runtime: lambda.Runtime.NODEJS_22_X,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset('lambda/ai-categorize'),
+      code: lambda.Code.fromAsset('lambda/knowledge'),
+      environment: commonEnv,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    mainTable.grantReadWriteData(knowledgeLambda);
+    knowledgeTable.grantReadWriteData(knowledgeLambda);
+
+    // Receipt Handler: POST /receipt/upload（S3 presigned URL 発行）
+    const receiptLambda = new lambda.Function(this, 'ReceiptFunction', {
+      functionName: 'kakeibo-receipt',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('lambda/receipt'),
+      environment: commonEnv,
+      timeout: cdk.Duration.seconds(10),
+      memorySize: 256,
+    });
+
+    receiptBucket.grantPut(receiptLambda);
+
+    // Pattern Analyzer: EventBridge起動（設計書 §8-3 Categorizer Agent）
+    const patternAnalyzerLambda = new lambda.Function(this, 'PatternAnalyzerFunction', {
+      functionName: 'kakeibo-pattern-analyzer',
+      runtime: lambda.Runtime.NODEJS_22_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset('lambda/pattern-analyzer'),
       environment: {
         ...commonEnv,
         BEDROCK_REGION: this.region,
       },
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60),
       memorySize: 512,
     });
 
-    // Bedrock invoke permission
-    aiCategorizeLambda.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+    mainTable.grantReadData(patternAnalyzerLambda);
+    knowledgeTable.grantReadWriteData(patternAnalyzerLambda);
+    patternAnalyzerLambda.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['bedrock:InvokeModel'],
       resources: ['*'],
     }));
 
+    // 毎日深夜1時にパターン分析を実行
+    new events.Rule(this, 'PatternAnalyzerSchedule', {
+      ruleName: 'kakeibo-pattern-analyzer-schedule',
+      schedule: events.Schedule.cron({ minute: '0', hour: '16' }), // UTC 16:00 = JST 01:00
+      targets: [new targets.LambdaFunction(patternAnalyzerLambda)],
+    });
+
     // ========================================
-    // API Gateway
+    // API Gateway（設計書 §9 準拠）
     // ========================================
 
     const api = new apigateway.RestApi(this, 'KakeiboApi', {
       restApiName: 'kakeibo-api',
-      description: 'Kakeibo AI REST API',
+      description: 'Kakeibo AI REST API（設計書 §9 準拠）',
       defaultCorsPreflightOptions: {
         allowOrigins: apigateway.Cors.ALL_ORIGINS,
         allowMethods: apigateway.Cors.ALL_METHODS,
@@ -222,28 +287,50 @@ export class KakeiboStack extends cdk.Stack {
       authorizationType: apigateway.AuthorizationType.COGNITO,
     };
 
-    // /transactions
+    // POST /input（設計書 §9-1: AI分類リクエスト）
+    const inputResource = api.root.addResource('input');
+    inputResource.addMethod('POST', new apigateway.LambdaIntegration(inputLambda), authOptions);
+
+    // POST /input/confirm（設計書 §9-1: 確認・保存）
+    const inputConfirmResource = inputResource.addResource('confirm');
+    inputConfirmResource.addMethod('POST', new apigateway.LambdaIntegration(inputLambda), authOptions);
+
+    // GET /transactions
     const transactionsResource = api.root.addResource('transactions');
     transactionsResource.addMethod('GET', new apigateway.LambdaIntegration(transactionsLambda), authOptions);
-    transactionsResource.addMethod('POST', new apigateway.LambdaIntegration(transactionsLambda), authOptions);
 
-    const transactionIdResource = transactionsResource.addResource('{id}');
+    // PUT/DELETE /transactions/{txnId}
+    const transactionIdResource = transactionsResource.addResource('{txnId}');
     transactionIdResource.addMethod('PUT', new apigateway.LambdaIntegration(transactionsLambda), authOptions);
     transactionIdResource.addMethod('DELETE', new apigateway.LambdaIntegration(transactionsLambda), authOptions);
 
-    // /fixed-costs
-    const fixedCostsResource = api.root.addResource('fixed-costs');
-    fixedCostsResource.addMethod('GET', new apigateway.LambdaIntegration(fixedCostsLambda), authOptions);
-    fixedCostsResource.addMethod('POST', new apigateway.LambdaIntegration(fixedCostsLambda), authOptions);
+    // GET /summary
+    const summaryResource = api.root.addResource('summary');
+    summaryResource.addMethod('GET', new apigateway.LambdaIntegration(summaryLambda), authOptions);
 
-    const fixedCostIdResource = fixedCostsResource.addResource('{id}');
-    fixedCostIdResource.addMethod('PUT', new apigateway.LambdaIntegration(fixedCostsLambda), authOptions);
-    fixedCostIdResource.addMethod('DELETE', new apigateway.LambdaIntegration(fixedCostsLambda), authOptions);
+    // GET/PUT /knowledge/fixed-costs, GET/PUT /knowledge/settings
+    const knowledgeResource = api.root.addResource('knowledge');
 
-    // /ai/categorize
-    const aiResource = api.root.addResource('ai');
-    const categorizeResource = aiResource.addResource('categorize');
-    categorizeResource.addMethod('POST', new apigateway.LambdaIntegration(aiCategorizeLambda), authOptions);
+    const fixedCostsResource = knowledgeResource.addResource('fixed-costs');
+    fixedCostsResource.addMethod('GET', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+    fixedCostsResource.addMethod('POST', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+
+    const fixedCostIdResource = fixedCostsResource.addResource('{costId}');
+    fixedCostIdResource.addMethod('PUT', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+    fixedCostIdResource.addMethod('DELETE', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+
+    const settingsResource = knowledgeResource.addResource('settings');
+    settingsResource.addMethod('GET', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+    settingsResource.addMethod('PUT', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+
+    // GET /knowledge/patterns
+    const patternsResource = knowledgeResource.addResource('patterns');
+    patternsResource.addMethod('GET', new apigateway.LambdaIntegration(knowledgeLambda), authOptions);
+
+    // POST /receipt/upload
+    const receiptResource = api.root.addResource('receipt');
+    const uploadResource = receiptResource.addResource('upload');
+    uploadResource.addMethod('POST', new apigateway.LambdaIntegration(receiptLambda), authOptions);
 
     // ========================================
     // Outputs
@@ -272,6 +359,16 @@ export class KakeiboStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'FrontendBucketName', {
       value: frontendBucket.bucketName,
       description: 'Frontend S3 Bucket Name',
+    });
+
+    new cdk.CfnOutput(this, 'MainTableName', {
+      value: mainTable.tableName,
+      description: 'DynamoDB Main Table Name',
+    });
+
+    new cdk.CfnOutput(this, 'KnowledgeTableName', {
+      value: knowledgeTable.tableName,
+      description: 'DynamoDB Knowledge Table Name',
     });
   }
 }

@@ -5,8 +5,7 @@ import { BudgetCard } from './BudgetCard';
 import { CategoryChart } from './CategoryChart';
 import { RecentTransactions } from './RecentTransactions';
 import { getMonthlySummary } from '../../api/transactions';
-import { getFixedCosts } from '../../api/fixed-costs';
-import { getFamilySettings } from '../../api/family-settings';
+import { getFamilySettings, getTotalMonthlyIncome } from '../../api/family-settings';
 import { formatMonthJa, formatMonth } from '../../utils/format';
 import type { MonthlySummary, FamilySettings } from '../../types';
 
@@ -24,10 +23,9 @@ export function HomePage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [s, fs, _fc] = await Promise.all([
+      const [s, fs] = await Promise.all([
         getMonthlySummary(currentMonth),
         getFamilySettings(),
-        getFixedCosts(),
       ]);
       setSummary(s);
       setSettings(fs);
@@ -52,8 +50,8 @@ export function HomePage() {
     );
   }
 
-  const monthlyBudget = settings?.monthlyIncome || 0;
-  const remaining = monthlyBudget - (summary?.totalExpense || 0);
+  const monthlyIncome = settings ? getTotalMonthlyIncome(settings) : 0;
+  const remaining = monthlyIncome - (summary?.totalExpense || 0);
 
   return (
     <div className="px-4 pb-4">
@@ -72,38 +70,26 @@ export function HomePage() {
 
       {/* 月切り替え */}
       <div className="flex items-center justify-center gap-4 mb-4">
-        <button
-          onClick={() => navigateMonth(-1)}
-          className="text-slate-400 p-2"
-        >
-          ←
-        </button>
+        <button onClick={() => navigateMonth(-1)} className="text-slate-400 p-2">←</button>
         <span className="text-lg font-bold">{formatMonthJa(currentMonth)}</span>
-        <button
-          onClick={() => navigateMonth(1)}
-          className="text-slate-400 p-2"
-        >
-          →
-        </button>
+        <button onClick={() => navigateMonth(1)} className="text-slate-400 p-2">→</button>
       </div>
 
-      {/* 予算カード */}
       <BudgetCard
-        monthlyBudget={monthlyBudget}
+        monthlyIncome={monthlyIncome}
         totalExpense={summary?.totalExpense || 0}
-        fixedExpense={summary?.fixedExpense || 0}
-        variableExpense={summary?.variableExpense || 0}
+        fixedCostsTotal={summary?.fixedCostsTotal || 0}
+        variableCostsTotal={summary?.variableCostsTotal || 0}
         remaining={remaining}
+        comparedToPrevMonth={summary?.comparedToPrevMonth || 0}
       />
 
-      {/* カテゴリ別支出 */}
       {summary && summary.categoryBreakdown.length > 0 && (
         <div className="mt-4">
           <CategoryChart breakdown={summary.categoryBreakdown} />
         </div>
       )}
 
-      {/* 最近の記録 */}
       <div className="mt-4">
         <RecentTransactions month={currentMonth} />
       </div>

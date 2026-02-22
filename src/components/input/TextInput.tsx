@@ -5,12 +5,12 @@ interface TextInputProps {
 }
 
 const QUICK_EXAMPLES = [
-  'スーパーで3240円',
+  'イオンで3240円',
+  'ファミレスでランチ 1200円',
   '飲み会 4000円',
-  'ランチ 850円',
-  'コンビニ 680円',
-  'タクシー 2300円',
-  'ユニクロ 5980円',
+  'コストコ 8500円',
+  '子供の靴 2980円',
+  '昨日タクシー 2300円',
 ];
 
 export function TextInput({ onSubmit }: TextInputProps) {
@@ -32,7 +32,6 @@ export function TextInput({ onSubmit }: TextInputProps) {
 
   return (
     <div className="space-y-4">
-      {/* メイン入力 */}
       <div className="card">
         <label className="text-sm font-medium text-slate-700 mb-2 block">
           なんでも雑に書いてOK
@@ -53,7 +52,6 @@ export function TextInput({ onSubmit }: TextInputProps) {
         </button>
       </div>
 
-      {/* クイック入力例 */}
       <div>
         <p className="text-xs text-slate-400 mb-2 px-1">タップで入力例をお試し</p>
         <div className="flex flex-wrap gap-2">

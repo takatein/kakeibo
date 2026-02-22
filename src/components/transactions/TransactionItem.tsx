@@ -12,7 +12,6 @@ export function TransactionItem({ transaction, onEdit, onDelete }: TransactionIt
 
   return (
     <div className="card flex items-center gap-3">
-      {/* カテゴリアイコン */}
       <div
         className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold text-white shrink-0"
         style={{ backgroundColor: CATEGORY_COLORS[category] }}
@@ -20,7 +19,6 @@ export function TransactionItem({ transaction, onEdit, onDelete }: TransactionIt
         {CATEGORY_LABELS[category].charAt(0)}
       </div>
 
-      {/* 詳細 */}
       <div className="flex-1 min-w-0" onClick={onEdit}>
         <div className="flex items-center gap-1.5">
           <p className="text-sm font-medium text-slate-700 truncate">
@@ -34,11 +32,10 @@ export function TransactionItem({ transaction, onEdit, onDelete }: TransactionIt
         </div>
         <p className="text-xs text-slate-400">
           {formatDateJa(date)} ・ {CATEGORY_LABELS[category]}
-          {inputBy === 'wife' && ' ・ 妻'}
+          {inputBy === 'secondary' && ' ・ 配偶者'}
         </p>
       </div>
 
-      {/* 金額 & 削除 */}
       <div className="text-right shrink-0">
         <p className="text-sm font-bold text-slate-800">{formatCurrency(amount)}</p>
         <button

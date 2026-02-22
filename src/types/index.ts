@@ -1,159 +1,283 @@
 // ========================================
 // Kakeibo AI - Type Definitions
+// 詳細設計書 v1.0 準拠
 // ========================================
 
 /** 入力方式 */
-export type InputMethod = 'text' | 'voice' | 'receipt';
+export type InputMethod = 'camera' | 'text' | 'voice' | 'manual' | 'auto';
 
 /** 入力者 */
-export type InputBy = 'husband' | 'wife';
+export type InputBy = 'primary' | 'secondary';
 
-/** カテゴリ */
+/** カテゴリ（設計書 §4-1 / §8-3 準拠） */
 export type Category =
-  | 'food_cooking'      // 食費（自炊）
-  | 'food_eating_out'   // 食費（外食）
-  | 'food_delivery'     // 食費（デリバリー）
-  | 'drinking'          // 飲み会
-  | 'daily_necessities' // 日用品
-  | 'transportation'    // 交通費
-  | 'entertainment'     // 娯楽・レジャー
-  | 'clothing'          // 衣服
-  | 'medical'           // 医療費
-  | 'education'         // 教育費
-  | 'housing'           // 住居費
-  | 'utilities'         // 水道光熱費
-  | 'communication'     // 通信費
-  | 'insurance'         // 保険
-  | 'loan'              // ローン
-  | 'childcare'         // 子育て
-  | 'beauty'            // 美容
-  | 'subscription'      // サブスクリプション
-  | 'other';            // その他
+  | 'food_home'        // 食費（自炊）
+  | 'food_restaurant'  // 外食（ファミレス）
+  | 'food_premium'     // 外食（高級）
+  | 'daily_goods'      // 日用品
+  | 'children'         // 子供関連
+  | 'education'        // 教育費
+  | 'outing'           // 週末外出
+  | 'travel'           // 旅行
+  | 'medical'          // 医療費
+  | 'utility'          // 光熱費・通信
+  | 'insurance'        // 保険
+  | 'loan'             // ローン
+  | 'car'              // 車関連
+  | 'hobby'            // 趣味（副業費）
+  | 'other';           // その他
 
 /** カテゴリ表示名マッピング */
 export const CATEGORY_LABELS: Record<Category, string> = {
-  food_cooking: '食費（自炊）',
-  food_eating_out: '食費（外食）',
-  food_delivery: '食費（デリバリー）',
-  drinking: '飲み会',
-  daily_necessities: '日用品',
-  transportation: '交通費',
-  entertainment: '娯楽・レジャー',
-  clothing: '衣服',
-  medical: '医療費',
+  food_home: '食費（自炊）',
+  food_restaurant: '外食',
+  food_premium: '外食（高級）',
+  daily_goods: '日用品',
+  children: '子供関連',
   education: '教育費',
-  housing: '住居費',
-  utilities: '水道光熱費',
-  communication: '通信費',
+  outing: '週末外出',
+  travel: '旅行',
+  medical: '医療費',
+  utility: '光熱費・通信',
   insurance: '保険',
   loan: 'ローン',
-  childcare: '子育て',
-  beauty: '美容',
-  subscription: 'サブスク',
+  car: '車関連',
+  hobby: '趣味',
   other: 'その他',
 };
 
 /** カテゴリ色マッピング */
 export const CATEGORY_COLORS: Record<Category, string> = {
-  food_cooking: '#22c55e',
-  food_eating_out: '#f97316',
-  food_delivery: '#ef4444',
-  drinking: '#a855f7',
-  daily_necessities: '#06b6d4',
-  transportation: '#3b82f6',
-  entertainment: '#eab308',
-  clothing: '#ec4899',
-  medical: '#14b8a6',
+  food_home: '#22c55e',
+  food_restaurant: '#f97316',
+  food_premium: '#dc2626',
+  daily_goods: '#06b6d4',
+  children: '#d946ef',
   education: '#8b5cf6',
-  housing: '#64748b',
-  utilities: '#f59e0b',
-  communication: '#6366f1',
+  outing: '#eab308',
+  travel: '#3b82f6',
+  medical: '#14b8a6',
+  utility: '#f59e0b',
   insurance: '#0ea5e9',
-  loan: '#dc2626',
-  childcare: '#d946ef',
-  beauty: '#f472b6',
-  subscription: '#7c3aed',
+  loan: '#64748b',
+  car: '#6366f1',
+  hobby: '#a855f7',
   other: '#94a3b8',
 };
 
+// ========================================
+// DynamoDB データモデル（設計書 §4 準拠）
+// PK: family_{familyId} / SK: txn#{date}#{ulid}
+// ========================================
+
 /** 支出記録 */
 export interface Transaction {
-  id: string;
-  userId: string;
-  date: string;          // YYYY-MM-DD
+  PK: string;                    // "family_xxx"
+  SK: string;                    // "txn#2026-02-22#01JXXXXXXXX"
+  txnId: string;                 // ULID
   amount: number;
   category: Category;
-  storeName?: string;
+  subCategory?: string;
+  shopName?: string;
   memo?: string;
+  date: string;                  // YYYY-MM-DD
   inputMethod: InputMethod;
   inputBy: InputBy;
   isFixed: boolean;
+  receiptImageKey?: string;
+  aiConfidence?: number;         // 0.0-1.0
   createdAt: string;
   updatedAt: string;
 }
 
-/** 固定費マスタ */
+/** 年齢トリガー（設計書 §4-2） */
+export interface AgeTrigger {
+  targetMember: 'child1' | 'child2' | 'self' | 'spouse';
+  triggerAge: number;
+  action: 'update_amount' | 'deactivate';
+  newAmount?: number;
+  description: string;
+}
+
+/** 固定費マスタ（設計書 §4-2） */
 export interface FixedCost {
-  id: string;
-  userId: string;
+  PK: string;                    // "family_xxx"
+  SK: string;                    // "fixed#costId"
+  costId: string;
   name: string;
   amount: number;
   category: Category;
-  billingDay: number;     // 毎月の計上日（1-28）
-  startAge?: number;      // 開始年齢トリガー
-  endAge?: number;        // 終了年齢トリガー
+  billingDay: number;            // 1-31
   isActive: boolean;
+  ageTriggers?: AgeTrigger[];
   createdAt: string;
   updatedAt: string;
 }
 
-/** 家族設定 */
-export interface FamilySettings {
-  userId: string;
-  husbandName: string;
-  wifeName: string;
-  husbandBirthYear: number;
-  wifeBirthYear: number;
-  children: ChildInfo[];
-  monthlyIncome: number;
-  bonusPerYear: number;
-  retirementAge: number;
-}
-
-/** 子供情報 */
-export interface ChildInfo {
+/** 家族メンバー情報 */
+export interface FamilyMember {
   name: string;
   birthYear: number;
-  educationPlan: 'public' | 'private' | 'mixed';
+  birthMonth: number;
 }
 
-/** 月次サマリー */
+/** 家族設定（設計書 §4-3） */
+export interface FamilySettings {
+  PK: string;                    // "family_xxx"
+  SK: 'settings';
+  members: {
+    self: FamilyMember;
+    spouse: FamilyMember;
+    child1?: FamilyMember;
+    child2?: FamilyMember;
+  };
+  income: {
+    selfMonthlyNet: number;      // 手取り月収
+    spouseMonthlyNet: number;
+    otherMonthlyIncome: number;  // 祖父贈与等
+  };
+  assets: {
+    currentSavings: number;      // 現在の貯蓄額
+  };
+  loan: {
+    monthlyPayment: number;
+    remainingMonths: number;
+    interestRate: number;
+  };
+  monthlyBudget: Partial<Record<Category, number>>;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ========================================
+// AgentCore Memory（設計書 §5 準拠）
+// ========================================
+
+/** パターンナレッジ（設計書 §5-2） */
+export interface PatternKnowledge {
+  patternId: string;
+  description: string;
+  category: Category;
+  averageAmount: number;
+  frequency: 'weekly' | 'monthly';
+  dayOfWeek?: string[];
+  countPerWeek?: number;
+  detectedAt: string;
+  approvedAt?: string;
+  status: 'pending' | 'approved' | 'rejected';
+}
+
+/** 文脈ナレッジ（設計書 §5-1） */
+export interface ContextKnowledge {
+  shopToCategory: Record<string, Category>;
+  keywordToCategory: Record<string, Category>;
+}
+
+// ========================================
+// API レスポンス型（設計書 §9 準拠）
+// ========================================
+
+/** 確認アイテム（POST /input レスポンス） */
+export interface ConfirmItem {
+  tempId: string;
+  amount: number;
+  category: Category;
+  categoryLabel: string;
+  shopName?: string;
+  date: string;
+  memo?: string;
+  confidence: number;
+  alternativeCategories: { category: Category; label: string }[];
+}
+
+/** AI入力リクエスト */
+export interface InputRequest {
+  type: 'text' | 'voice' | 'camera';
+  content: string;
+  imageKey?: string;
+  timestamp: string;
+}
+
+/** AI入力レスポンス */
+export interface InputResponse {
+  sessionId: string;
+  items: ConfirmItem[];
+  needsClarification: boolean;
+  clarificationMessage?: string;
+}
+
+/** 確認リクエスト */
+export interface ConfirmRequest {
+  sessionId: string;
+  items: {
+    tempId: string;
+    amount: number;
+    category: Category;
+    shopName?: string;
+    date: string;
+    memo?: string;
+  }[];
+}
+
+/** 月次サマリーレスポンス（設計書 §9） */
 export interface MonthlySummary {
-  month: string;           // YYYY-MM
+  month: string;
   totalIncome: number;
   totalExpense: number;
-  fixedExpense: number;
-  variableExpense: number;
   balance: number;
+  remainingBudget: number;
   categoryBreakdown: CategoryBreakdown[];
+  comparedToPrevMonth: number;
+  fixedCostsTotal: number;
+  variableCostsTotal: number;
 }
 
 /** カテゴリ別集計 */
 export interface CategoryBreakdown {
   category: Category;
+  label: string;
   amount: number;
-  count: number;
+  budgetAmount?: number;
   percentage: number;
+  count: number;
 }
 
-/** AI分類結果 */
-export interface AiCategorizationResult {
-  storeName?: string;
-  amount: number;
-  category: Category;
-  confidence: number;
-  date: string;
-  memo?: string;
+/** ナレッジレスポンス */
+export interface KnowledgeResponse {
+  fixedCosts: FixedCost[];
+  approvedPatterns: PatternKnowledge[];
+  pendingPatterns: PatternKnowledge[];
+  contextRules: ContextKnowledge;
+}
+
+/** シミュレーション結果（設計書 §8-4） */
+export interface SimulationResult {
+  dataPoints: SimulationDataPoint[];
+  milestones: SimulationMilestone[];
+  finalSavings: number;
+  retirementAnnualBalance: number;
+  savingsAt95: number;
+  warnings: SimulationWarning[];
+}
+
+export interface SimulationDataPoint {
+  age: number;
+  year: number;
+  annualIncome: number;
+  annualExpense: number;
+  balance: number;
+  cumulativeSavings: number;
+}
+
+export interface SimulationMilestone {
+  age: number;
+  event: string;
+  impact: string;
+}
+
+export interface SimulationWarning {
+  age: number;
+  message: string;
 }
 
 /** 認証ユーザー */
@@ -162,4 +286,21 @@ export interface AuthUser {
   email: string;
   name: string;
   familyId: string;
+  role: 'primary' | 'secondary';
 }
+
+// ========================================
+// エラーコード（設計書 §12 準拠）
+// ========================================
+
+export const ErrorCodes = {
+  AI_PARSE_FAILED: 'E1001',
+  AI_CONFIDENCE_LOW: 'E1002',
+  AI_TIMEOUT: 'E1003',
+  INVALID_AMOUNT: 'E2001',
+  INVALID_DATE: 'E2002',
+  UNAUTHORIZED: 'E3001',
+  TOKEN_EXPIRED: 'E3002',
+  NOT_FOUND: 'E4001',
+  CONFLICT: 'E4002',
+} as const;

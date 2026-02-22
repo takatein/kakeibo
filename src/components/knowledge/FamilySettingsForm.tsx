@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getFamilySettings, updateFamilySettings } from '../../api/family-settings';
-import type { FamilySettings, ChildInfo } from '../../types';
+import type { FamilySettings, FamilyMember } from '../../types';
 
 export function FamilySettingsForm() {
   const [settings, setSettings] = useState<FamilySettings | null>(null);
@@ -25,33 +25,27 @@ export function FamilySettingsForm() {
     }
   };
 
-  const updateField = <K extends keyof FamilySettings>(
-    key: K,
-    value: FamilySettings[K]
-  ) => {
-    setSettings(prev => prev ? { ...prev, [key]: value } : prev);
+  const updateMember = (key: 'self' | 'spouse' | 'child1' | 'child2', updates: Partial<FamilyMember>) => {
+    if (!settings) return;
+    const current = settings.members[key] || { name: '', birthYear: 2020, birthMonth: 1 };
+    setSettings({
+      ...settings,
+      members: {
+        ...settings.members,
+        [key]: { ...current, ...updates },
+      },
+    });
   };
 
-  const addChild = () => {
+  const toggleChild = (key: 'child1' | 'child2') => {
     if (!settings) return;
-    const newChild: ChildInfo = {
-      name: '',
-      birthYear: new Date().getFullYear(),
-      educationPlan: 'public',
-    };
-    updateField('children', [...settings.children, newChild]);
-  };
-
-  const updateChild = (index: number, updates: Partial<ChildInfo>) => {
-    if (!settings) return;
-    const children = [...settings.children];
-    children[index] = { ...children[index], ...updates };
-    updateField('children', children);
-  };
-
-  const removeChild = (index: number) => {
-    if (!settings) return;
-    updateField('children', settings.children.filter((_, i) => i !== index));
+    if (settings.members[key]) {
+      const newMembers = { ...settings.members };
+      delete newMembers[key];
+      setSettings({ ...settings, members: newMembers });
+    } else {
+      updateMember(key, { name: '', birthYear: 2022, birthMonth: 1 });
+    }
   };
 
   if (!settings) return <div className="text-center py-8 text-slate-400">読み込み中...</div>;
@@ -64,161 +58,104 @@ export function FamilySettingsForm() {
         </div>
       )}
 
-      {/* 世帯情報 */}
+      {/* 設計書 §4-3: members */}
       <div className="card space-y-4">
         <h3 className="text-sm font-bold text-slate-700">世帯情報</h3>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-slate-500 block mb-1">夫の名前</label>
-            <input
-              type="text"
-              value={settings.husbandName}
-              onChange={e => updateField('husbandName', e.target.value)}
-              className="input-field"
-              placeholder="太郎"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-slate-500 block mb-1">妻の名前</label>
-            <input
-              type="text"
-              value={settings.wifeName}
-              onChange={e => updateField('wifeName', e.target.value)}
-              className="input-field"
-              placeholder="花子"
-            />
+        {/* 本人 */}
+        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+          <span className="text-xs font-medium text-slate-600">本人 (primary)</span>
+          <div className="grid grid-cols-3 gap-2">
+            <input type="text" value={settings.members.self.name} onChange={e => updateMember('self', { name: e.target.value })} className="input-field text-sm py-2" placeholder="名前" />
+            <input type="number" value={settings.members.self.birthYear} onChange={e => updateMember('self', { birthYear: parseInt(e.target.value) || 1990 })} className="input-field text-sm py-2" placeholder="生年" />
+            <input type="number" value={settings.members.self.birthMonth} onChange={e => updateMember('self', { birthMonth: parseInt(e.target.value) || 1 })} className="input-field text-sm py-2" placeholder="月" min={1} max={12} />
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs text-slate-500 block mb-1">夫の生年</label>
-            <input
-              type="number"
-              value={settings.husbandBirthYear}
-              onChange={e => updateField('husbandBirthYear', parseInt(e.target.value) || 1985)}
-              className="input-field"
-            />
-          </div>
-          <div>
-            <label className="text-xs text-slate-500 block mb-1">妻の生年</label>
-            <input
-              type="number"
-              value={settings.wifeBirthYear}
-              onChange={e => updateField('wifeBirthYear', parseInt(e.target.value) || 1987)}
-              className="input-field"
-            />
+        {/* 配偶者 */}
+        <div className="bg-slate-50 rounded-lg p-3 space-y-2">
+          <span className="text-xs font-medium text-slate-600">配偶者 (secondary)</span>
+          <div className="grid grid-cols-3 gap-2">
+            <input type="text" value={settings.members.spouse.name} onChange={e => updateMember('spouse', { name: e.target.value })} className="input-field text-sm py-2" placeholder="名前" />
+            <input type="number" value={settings.members.spouse.birthYear} onChange={e => updateMember('spouse', { birthYear: parseInt(e.target.value) || 1990 })} className="input-field text-sm py-2" placeholder="生年" />
+            <input type="number" value={settings.members.spouse.birthMonth} onChange={e => updateMember('spouse', { birthMonth: parseInt(e.target.value) || 1 })} className="input-field text-sm py-2" placeholder="月" min={1} max={12} />
           </div>
         </div>
-      </div>
 
-      {/* 収入 */}
-      <div className="card space-y-4">
-        <h3 className="text-sm font-bold text-slate-700">収入</h3>
-
+        {/* 子供1 */}
         <div>
-          <label className="text-xs text-slate-500 block mb-1">月収（手取り / 円）</label>
-          <input
-            type="number"
-            value={settings.monthlyIncome}
-            onChange={e => updateField('monthlyIncome', parseInt(e.target.value) || 0)}
-            className="input-field text-lg font-bold"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">年間ボーナス（手取り / 円）</label>
-          <input
-            type="number"
-            value={settings.bonusPerYear}
-            onChange={e => updateField('bonusPerYear', parseInt(e.target.value) || 0)}
-            className="input-field"
-          />
-        </div>
-
-        <div>
-          <label className="text-xs text-slate-500 block mb-1">定年年齢</label>
-          <input
-            type="number"
-            value={settings.retirementAge}
-            onChange={e => updateField('retirementAge', parseInt(e.target.value) || 65)}
-            className="input-field"
-          />
-        </div>
-      </div>
-
-      {/* 子供 */}
-      <div className="card space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-700">子供</h3>
-          <button
-            onClick={addChild}
-            className="text-xs text-primary-600 font-medium"
-          >
-            + 追加
-          </button>
-        </div>
-
-        {settings.children.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-4">
-            子供の情報を追加すると教育費をシミュレーションできます
-          </p>
-        ) : (
-          settings.children.map((child, i) => (
-            <div key={i} className="bg-slate-50 rounded-xl p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-600">子供 {i + 1}</span>
-                <button
-                  onClick={() => removeChild(i)}
-                  className="text-xs text-red-400"
-                >
-                  削除
-                </button>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5">名前</label>
-                  <input
-                    type="text"
-                    value={child.name}
-                    onChange={e => updateChild(i, { name: e.target.value })}
-                    className="input-field text-sm py-2"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block mb-0.5">生年</label>
-                  <input
-                    type="number"
-                    value={child.birthYear}
-                    onChange={e => updateChild(i, { birthYear: parseInt(e.target.value) || 2020 })}
-                    className="input-field text-sm py-2"
-                  />
-                </div>
-              </div>
-              <div>
-                <label className="text-[10px] text-slate-400 block mb-0.5">教育プラン</label>
-                <select
-                  value={child.educationPlan}
-                  onChange={e => updateChild(i, { educationPlan: e.target.value as ChildInfo['educationPlan'] })}
-                  className="input-field text-sm py-2"
-                >
-                  <option value="public">すべて公立</option>
-                  <option value="private">すべて私立</option>
-                  <option value="mixed">中学から私立</option>
-                </select>
+          <div className="flex items-center gap-2 mb-2">
+            <input type="checkbox" checked={!!settings.members.child1} onChange={() => toggleChild('child1')} className="rounded" />
+            <span className="text-xs font-medium text-slate-600">子供1</span>
+          </div>
+          {settings.members.child1 && (
+            <div className="bg-slate-50 rounded-lg p-3">
+              <div className="grid grid-cols-3 gap-2">
+                <input type="text" value={settings.members.child1.name} onChange={e => updateMember('child1', { name: e.target.value })} className="input-field text-sm py-2" placeholder="名前" />
+                <input type="number" value={settings.members.child1.birthYear} onChange={e => updateMember('child1', { birthYear: parseInt(e.target.value) || 2020 })} className="input-field text-sm py-2" placeholder="生年" />
+                <input type="number" value={settings.members.child1.birthMonth} onChange={e => updateMember('child1', { birthMonth: parseInt(e.target.value) || 1 })} className="input-field text-sm py-2" placeholder="月" min={1} max={12} />
               </div>
             </div>
-          ))
-        )}
+          )}
+        </div>
+
+        {/* 子供2 */}
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <input type="checkbox" checked={!!settings.members.child2} onChange={() => toggleChild('child2')} className="rounded" />
+            <span className="text-xs font-medium text-slate-600">子供2</span>
+          </div>
+          {settings.members.child2 && (
+            <div className="bg-slate-50 rounded-lg p-3">
+              <div className="grid grid-cols-3 gap-2">
+                <input type="text" value={settings.members.child2.name} onChange={e => updateMember('child2', { name: e.target.value })} className="input-field text-sm py-2" placeholder="名前" />
+                <input type="number" value={settings.members.child2.birthYear} onChange={e => updateMember('child2', { birthYear: parseInt(e.target.value) || 2020 })} className="input-field text-sm py-2" placeholder="生年" />
+                <input type="number" value={settings.members.child2.birthMonth} onChange={e => updateMember('child2', { birthMonth: parseInt(e.target.value) || 1 })} className="input-field text-sm py-2" placeholder="月" min={1} max={12} />
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* 保存 */}
-      <button
-        onClick={handleSave}
-        disabled={isSaving}
-        className="btn-primary w-full"
-      >
+      {/* 設計書 §4-3: income */}
+      <div className="card space-y-4">
+        <h3 className="text-sm font-bold text-slate-700">収入</h3>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">本人 手取り月収（円）</label>
+          <input type="number" value={settings.income.selfMonthlyNet} onChange={e => setSettings({...settings, income: {...settings.income, selfMonthlyNet: parseInt(e.target.value) || 0}})} className="input-field text-lg font-bold" />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">配偶者 手取り月収（円）</label>
+          <input type="number" value={settings.income.spouseMonthlyNet} onChange={e => setSettings({...settings, income: {...settings.income, spouseMonthlyNet: parseInt(e.target.value) || 0}})} className="input-field" />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">その他月収（贈与等）</label>
+          <input type="number" value={settings.income.otherMonthlyIncome} onChange={e => setSettings({...settings, income: {...settings.income, otherMonthlyIncome: parseInt(e.target.value) || 0}})} className="input-field" />
+        </div>
+      </div>
+
+      {/* 設計書 §4-3: assets + loan */}
+      <div className="card space-y-4">
+        <h3 className="text-sm font-bold text-slate-700">資産・ローン</h3>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">現在の貯蓄額（円）</label>
+          <input type="number" value={settings.assets.currentSavings} onChange={e => setSettings({...settings, assets: {...settings.assets, currentSavings: parseInt(e.target.value) || 0}})} className="input-field text-lg font-bold" step={1000000} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">住宅ローン月額（円）</label>
+          <input type="number" value={settings.loan.monthlyPayment} onChange={e => setSettings({...settings, loan: {...settings.loan, monthlyPayment: parseInt(e.target.value) || 0}})} className="input-field" />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">ローン残り月数</label>
+          <input type="number" value={settings.loan.remainingMonths} onChange={e => setSettings({...settings, loan: {...settings.loan, remainingMonths: parseInt(e.target.value) || 0}})} className="input-field" />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 block mb-1">変動金利（%）</label>
+          <input type="number" value={settings.loan.interestRate} onChange={e => setSettings({...settings, loan: {...settings.loan, interestRate: parseFloat(e.target.value) || 0}})} className="input-field" step={0.1} />
+        </div>
+      </div>
+
+      <button onClick={handleSave} disabled={isSaving} className="btn-primary w-full">
         {isSaving ? '保存中...' : '設定を保存'}
       </button>
     </div>

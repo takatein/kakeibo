@@ -2,39 +2,47 @@ import { useState } from 'react';
 import { PageHeader } from '../layout/PageHeader';
 import { TextInput } from './TextInput';
 import { ConfirmDialog } from './ConfirmDialog';
-import { categorizeWithAi, saveTransaction } from '../../api/transactions';
-import type { AiCategorizationResult, InputMethod } from '../../types';
+import { submitInput, confirmInput } from '../../api/transactions';
+import type { ConfirmItem } from '../../types';
 
-type InputMode = 'text' | 'voice' | 'receipt';
+type InputMode = 'text' | 'voice' | 'camera';
 
 export function InputPage() {
   const [mode, setMode] = useState<InputMode>('text');
-  const [result, setResult] = useState<AiCategorizationResult | null>(null);
-  const [inputMethod, setInputMethod] = useState<InputMethod>('text');
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [items, setItems] = useState<ConfirmItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState('');
 
+  /** 設計書 §9: POST /input */
   const handleTextSubmit = async (text: string) => {
-    const aiResult = await categorizeWithAi(text);
-    setResult(aiResult);
-    setInputMethod('text');
+    const response = await submitInput({
+      type: 'text',
+      content: text,
+      timestamp: new Date().toISOString(),
+    });
+    setSessionId(response.sessionId);
+    setItems(response.items);
   };
 
-  const handleConfirm = async (confirmed: AiCategorizationResult) => {
+  /** 設計書 §9: POST /input/confirm */
+  const handleConfirm = async (confirmedItems: ConfirmItem[]) => {
+    if (!sessionId) return;
     setIsSaving(true);
     try {
-      await saveTransaction({
-        userId: 'demo-user',
-        date: confirmed.date,
-        amount: confirmed.amount,
-        category: confirmed.category,
-        storeName: confirmed.storeName,
-        memo: confirmed.memo,
-        inputMethod,
-        inputBy: 'husband',
-        isFixed: false,
+      await confirmInput({
+        sessionId,
+        items: confirmedItems.map(item => ({
+          tempId: item.tempId,
+          amount: item.amount,
+          category: item.category,
+          shopName: item.shopName,
+          date: item.date,
+          memo: item.memo,
+        })),
       });
-      setResult(null);
+      setItems([]);
+      setSessionId(null);
       setSavedMessage('記録しました');
       setTimeout(() => setSavedMessage(''), 2000);
     } catch (err) {
@@ -45,20 +53,21 @@ export function InputPage() {
   };
 
   const handleCancel = () => {
-    setResult(null);
+    setItems([]);
+    setSessionId(null);
   };
 
   return (
     <div className="px-4 pb-4">
       <PageHeader title="支出を記録" subtitle="しゃべる・撮る・雑に書く" />
 
-      {/* モード切替タブ */}
+      {/* 設計書 §10-3: [📷] [💬] [🎤] モードタブ */}
       <div className="flex gap-1 bg-slate-100 rounded-xl p-1 mb-4">
         {([
-          { key: 'text', label: 'テキスト', icon: '✏️' },
-          { key: 'voice', label: '音声', icon: '🎤' },
-          { key: 'receipt', label: 'レシート', icon: '📷' },
-        ] as const).map(({ key, label, icon }) => (
+          { key: 'camera' as InputMode, label: 'レシート', icon: '📷' },
+          { key: 'text' as InputMode, label: 'テキスト', icon: '💬' },
+          { key: 'voice' as InputMode, label: '音声', icon: '🎤' },
+        ]).map(({ key, label, icon }) => (
           <button
             key={key}
             onClick={() => setMode(key)}
@@ -81,20 +90,18 @@ export function InputPage() {
         </div>
       )}
 
-      {/* 確認ダイアログ */}
-      {result ? (
+      {/* 設計書 §10-3: 確認画面 */}
+      {items.length > 0 ? (
         <ConfirmDialog
-          result={result}
+          items={items}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
           isSaving={isSaving}
         />
       ) : (
         <>
-          {/* テキスト入力 */}
           {mode === 'text' && <TextInput onSubmit={handleTextSubmit} />}
 
-          {/* 音声入力 (Phase 2) */}
           {mode === 'voice' && (
             <div className="card text-center py-12">
               <p className="text-4xl mb-3">🎤</p>
@@ -108,15 +115,14 @@ export function InputPage() {
             </div>
           )}
 
-          {/* レシート撮影 (Phase 2) */}
-          {mode === 'receipt' && (
+          {mode === 'camera' && (
             <div className="card text-center py-12">
               <p className="text-4xl mb-3">📷</p>
               <p className="text-slate-500 text-sm">
                 レシート撮影は Phase 2 で実装予定です
               </p>
               <p className="text-slate-400 text-xs mt-2">
-                Bedrock Nova Pro (Vision) を使用して<br />
+                Bedrock Nova Pro (マルチモーダル) を使用して<br />
                 レシートから金額・店名を自動読み取りします
               </p>
             </div>

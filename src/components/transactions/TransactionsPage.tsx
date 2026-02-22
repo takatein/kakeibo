@@ -28,14 +28,14 @@ export function TransactionsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (txnId: string) => {
     if (!confirm('この記録を削除しますか？')) return;
-    await deleteTransaction(id);
-    setTransactions(prev => prev.filter(t => t.id !== id));
+    await deleteTransaction(txnId);
+    setTransactions(prev => prev.filter(t => t.txnId !== txnId));
   };
 
-  const handleUpdate = async (id: string, updates: Partial<Transaction>) => {
-    await updateTransaction(id, updates);
+  const handleUpdate = async (txnId: string, updates: Partial<Transaction>) => {
+    await updateTransaction(txnId, updates);
     setEditingTxn(null);
     await loadTransactions();
   };
@@ -52,23 +52,17 @@ export function TransactionsPage() {
     <div className="px-4 pb-4">
       <PageHeader title="記録一覧" />
 
-      {/* 月切り替え */}
       <div className="flex items-center justify-between mb-4">
-        <button onClick={() => navigateMonth(-1)} className="text-slate-400 p-2">
-          ←
-        </button>
+        <button onClick={() => navigateMonth(-1)} className="text-slate-400 p-2">←</button>
         <div className="text-center">
           <span className="text-lg font-bold">{formatMonthJa(currentMonth)}</span>
           <p className="text-xs text-slate-400">
             {transactions.length}件 ・ 合計 ¥{totalAmount.toLocaleString()}
           </p>
         </div>
-        <button onClick={() => navigateMonth(1)} className="text-slate-400 p-2">
-          →
-        </button>
+        <button onClick={() => navigateMonth(1)} className="text-slate-400 p-2">→</button>
       </div>
 
-      {/* 取引一覧 */}
       {isLoading ? (
         <div className="text-center py-12 text-slate-400 text-sm">読み込み中...</div>
       ) : transactions.length === 0 ? (
@@ -79,20 +73,19 @@ export function TransactionsPage() {
         <div className="space-y-2">
           {transactions.map((txn) => (
             <TransactionItem
-              key={txn.id}
+              key={txn.txnId}
               transaction={txn}
               onEdit={() => setEditingTxn(txn)}
-              onDelete={() => handleDelete(txn.id)}
+              onDelete={() => handleDelete(txn.txnId)}
             />
           ))}
         </div>
       )}
 
-      {/* 編集モーダル */}
       {editingTxn && (
         <EditTransactionModal
           transaction={editingTxn}
-          onSave={(updates) => handleUpdate(editingTxn.id, updates)}
+          onSave={(updates) => handleUpdate(editingTxn.txnId, updates)}
           onClose={() => setEditingTxn(null)}
         />
       )}
