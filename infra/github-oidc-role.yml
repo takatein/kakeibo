@@ -1,0 +1,70 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  GitHub Actions OIDC Provider + Deploy Role for Kakeibo.
+  初回のみ AWS コンソール or CLI で手動デプロイ。
+  以後 GitHub Actions がこのロールを assume して CDK deploy を実行する。
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub organization or username (例: takatein)
+  GitHubRepo:
+    Type: String
+    Default: kakeibo
+    Description: GitHub repository name
+  GitHubBranch:
+    Type: String
+    Default: main
+    Description: Allowed branch pattern (main or *)
+
+Resources:
+  # GitHub OIDC Provider（アカウントに1つだけ作成）
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        # GitHub Actions OIDC の thumbprint（AWS が自動検証するので固定値でOK）
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # GitHub Actions が assume する IAM Role
+  GitHubActionsDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: kakeibo-github-actions-deploy
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Ref GitHubOIDCProvider
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub: !Sub repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}
+      MaxSessionDuration: 3600
+      ManagedPolicyArns:
+        # CDK deploy に必要な最小限のポリシー
+        # 本番ではカスタムポリシーに絞ることを推奨
+        - arn:aws:iam::aws:policy/AdministratorAccess
+      Tags:
+        - Key: Project
+          Value: kakeibo
+        - Key: ManagedBy
+          Value: github-actions
+
+Outputs:
+  RoleArn:
+    Description: GitHub Actions が assume する IAM Role ARN。GitHub Secrets の AWS_ROLE_ARN に設定する。
+    Value: !GetAtt GitHubActionsDeployRole.Arn
+    Export:
+      Name: kakeibo-github-actions-role-arn
+
+  OIDCProviderArn:
+    Description: GitHub OIDC Provider ARN
+    Value: !Ref GitHubOIDCProvider

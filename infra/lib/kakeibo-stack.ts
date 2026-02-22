@@ -356,6 +356,11 @@ export class KakeiboStack extends cdk.Stack {
       description: 'CloudFront Distribution URL',
     });
 
+    new cdk.CfnOutput(this, 'DistributionId', {
+      value: distribution.distributionId,
+      description: 'CloudFront Distribution ID (for cache invalidation)',
+    });
+
     new cdk.CfnOutput(this, 'FrontendBucketName', {
       value: frontendBucket.bucketName,
       description: 'Frontend S3 Bucket Name',

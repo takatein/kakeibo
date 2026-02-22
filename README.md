@@ -52,37 +52,63 @@ kakeibo/
 
 ## セットアップ
 
-### フロントエンド
+### ローカル開発（モックモード）
 
 ```bash
-# 依存関係インストール
 npm install
-
-# 環境変数設定
-cp .env.example .env
-# .env ファイルを編集してAWS設定を記入
-
-# 開発サーバー起動
-npm run dev
-
-# ビルド
-npm run build
+npm run dev    # localhost:5173 で起動。localStorage で全機能動作
 ```
 
-### インフラ (AWS CDK)
+### AWS デプロイ（本番）
+
+#### 1. 前提条件
+- AWS アカウント
+- GitHub アカウント + リポジトリ
+- AWS CLI v2 + Node.js 22
+
+#### 2. 初回セットアップ（OIDC 連携）
 
 ```bash
-cd infra
+# AWS にログイン済みの状態で実行
 
-# 依存関係インストール
-npm install
+# 2-1. GitHub Actions 用の OIDC ロールを作成
+aws cloudformation deploy \
+  --stack-name kakeibo-github-oidc \
+  --template-file infra/github-oidc-role.yml \
+  --capabilities CAPABILITY_NAMED_IAM \
+  --parameter-overrides GitHubOrg=<your-github-username> GitHubRepo=kakeibo
 
-# CDK Bootstrap (初回のみ)
-npx cdk bootstrap
+# 2-2. 出力されたロール ARN を確認
+aws cloudformation describe-stacks \
+  --stack-name kakeibo-github-oidc \
+  --query "Stacks[0].Outputs[?OutputKey=='RoleArn'].OutputValue" \
+  --output text
 
-# デプロイ
-npx cdk deploy
+# 2-3. GitHub リポジトリの Settings > Secrets に登録
+#   AWS_ROLE_ARN = arn:aws:iam::123456789012:role/kakeibo-github-actions-deploy
+
+# 2-4. CDK Bootstrap（初回のみ）
+cd infra && npm install && npx cdk bootstrap
 ```
+
+#### 3. デプロイ
+
+`main` ブランチに push すると GitHub Actions が自動実行:
+
+1. フロントエンドビルド
+2. CDK deploy（Lambda, DynamoDB, API Gateway 等）
+3. S3 にフロントエンドをアップロード
+4. CloudFront キャッシュ無効化
+
+手動実行: Actions タブ > "Deploy to AWS" > "Run workflow"
+
+#### 4. GitHub Secrets 一覧
+
+| Secret | 説明 | 必須 |
+|--------|------|------|
+| `AWS_ROLE_ARN` | OIDC ロール ARN | Yes |
+| `FRONTEND_BUCKET` | S3 バケット名（skip_cdk時のフォールバック） | No |
+| `CLOUDFRONT_DISTRIBUTION_ID` | CF Distribution ID（同上） | No |
 
 ## 画面構成
 
