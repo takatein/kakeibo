@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TextInput } from './TextInput';
+import { VoiceInput } from './VoiceInput';
+import { ReceiptInput } from './ReceiptInput';
 import { ConfirmDialog } from './ConfirmDialog';
 import { submitInput, confirmInput } from '../../api/transactions';
 import type { ConfirmItem } from '../../types';
@@ -23,6 +25,21 @@ export function InputPage() {
     });
     setSessionId(response.sessionId);
     setItems(response.items);
+  };
+
+  const handleVoiceSubmit = async (text: string) => {
+    const response = await submitInput({
+      type: 'voice',
+      content: text,
+      timestamp: new Date().toISOString(),
+    });
+    setSessionId(response.sessionId);
+    setItems(response.items);
+  };
+
+  const handleReceiptResult = (resultItems: ConfirmItem[], sid: string) => {
+    setSessionId(sid);
+    setItems(resultItems);
   };
 
   const handleConfirm = async (confirmedItems: ConfirmItem[]) => {
@@ -115,47 +132,8 @@ export function InputPage() {
       ) : (
         <>
           {mode === 'text' && <TextInput onSubmit={handleTextSubmit} />}
-
-          {mode === 'voice' && (
-            <div className="card text-center py-12">
-              {/* マイクボタン — パルスリング */}
-              <div className="relative inline-flex items-center justify-center mb-6">
-                <div className="absolute w-24 h-24 rounded-full animate-ping opacity-10"
-                  style={{ backgroundColor: '#2E86C1' }} />
-                <div className="absolute w-20 h-20 rounded-full opacity-15"
-                  style={{ backgroundColor: '#D6E4F0' }} />
-                <button className="relative w-16 h-16 rounded-full flex items-center justify-center text-2xl text-white"
-                  style={{ backgroundColor: '#1E3A5F' }}>
-                  🎤
-                </button>
-              </div>
-              <p className="text-slate-500 text-sm mb-2">ボタンを押して話してください</p>
-              <p className="text-slate-400 text-xs">
-                「居酒屋で4000円」のように話すと<br />AIが自動で分類します
-              </p>
-              <p className="text-xs mt-4 px-3 py-1.5 inline-block"
-                style={{ backgroundColor: '#FDEBD0', color: '#E67E22', borderRadius: '20px' }}>
-                Phase 2 で実装予定
-              </p>
-            </div>
-          )}
-
-          {mode === 'camera' && (
-            <div className="card text-center py-12">
-              <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl"
-                style={{ backgroundColor: '#D6E4F0' }}>
-                📷
-              </div>
-              <p className="text-slate-500 text-sm mb-2">レシートを撮影してください</p>
-              <p className="text-slate-400 text-xs">
-                Bedrock Nova Pro でレシートから<br />金額・店名を自動読み取りします
-              </p>
-              <p className="text-xs mt-4 px-3 py-1.5 inline-block"
-                style={{ backgroundColor: '#FDEBD0', color: '#E67E22', borderRadius: '20px' }}>
-                Phase 2 で実装予定
-              </p>
-            </div>
-          )}
+          {mode === 'voice' && <VoiceInput onSubmit={handleVoiceSubmit} />}
+          {mode === 'camera' && <ReceiptInput onResult={handleReceiptResult} />}
         </>
       )}
     </div>

@@ -97,6 +97,6 @@ npx cdk deploy
 ## 開発フェーズ
 
 - [x] **Phase 1 (MVP)**: 認証・ホーム画面・固定費マスタ・テキスト入力→AI分類→保存
-- [ ] **Phase 2**: レシートOCR (Bedrock Vision)・音声入力 (Web Speech API)
+- [x] **Phase 2**: レシート撮影・OCR (モックOCR / Bedrock Vision対応準備)・音声入力 (Web Speech API)
 - [ ] **Phase 3**: AgentCore Memory パターン学習・ナレッジ自動登録
 - [ ] **Phase 4**: Simulator エージェント・65歳まで貯蓄グラフ・教育費ピーク警告
