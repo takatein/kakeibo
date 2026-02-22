@@ -42,7 +42,7 @@ function ProtectedRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter basename="/kakeibo">
       <AuthProvider>
         <ProtectedRoutes />
       </AuthProvider>

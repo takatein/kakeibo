@@ -43,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       name: email.split('@')[0],
       familyId: 'demo-family',
+      role: 'primary',
     };
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email,
       name,
       familyId: 'demo-family',
+      role: 'primary',
     };
 
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
