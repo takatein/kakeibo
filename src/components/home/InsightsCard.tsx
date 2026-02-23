@@ -8,9 +8,9 @@ import {
   LuGraduationCap,
   LuTrendingDown,
   LuRefreshCw,
-  LuAlertTriangle,
+  LuTriangleAlert,
   LuBrain,
-  LuHome,
+  LuHouse,
 } from 'react-icons/lu';
 import { getFamilySettings } from '../../api/family-settings';
 import { getFixedCosts } from '../../api/fixed-costs';
@@ -171,7 +171,7 @@ function buildInsights(
   if (monthlyIncome > 0 && monthlyFixed / monthlyIncome > 0.5) {
     insights.push({
       type: 'warning',
-      icon: LuAlertTriangle,
+      icon: LuTriangleAlert,
       title: '固定費が収入の50%を超えています',
       body: `固定費 ${formatCurrency(monthlyFixed)}/月は収入の${Math.round(monthlyFixed / monthlyIncome * 100)}%。見直しを検討しましょう`,
       link: '/knowledge',
@@ -198,7 +198,7 @@ function buildInsights(
     if (completionAge > 60) {
       insights.push({
         type: 'warning',
-        icon: LuHome,
+        icon: LuHouse,
         title: `住宅ローン完済は${completionAge}歳`,
         body: '定年後もローンが残ります。繰り上げ返済を検討しましょう',
         link: '/simulator',
@@ -206,7 +206,7 @@ function buildInsights(
     } else if (yearsLeft <= 5) {
       insights.push({
         type: 'success',
-        icon: LuHome,
+        icon: LuHouse,
         title: `住宅ローン完済まであと${yearsLeft}年`,
         body: `完済後は月${formatCurrency(settings.loan.monthlyPayment)}の余裕が生まれます`,
         link: '/simulator',

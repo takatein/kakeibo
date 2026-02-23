@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { LuHome, LuPencil, LuClipboardList, LuBookOpen, LuTrendingUp } from 'react-icons/lu';
+import { LuHouse, LuPencil, LuClipboardList, LuBookOpen, LuTrendingUp } from 'react-icons/lu';
 import type { IconType } from 'react-icons';
 
 interface NavItem {
@@ -9,7 +9,7 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { path: '/', label: 'ホーム', icon: LuHome },
+  { path: '/', label: 'ホーム', icon: LuHouse },
   { path: '/input', label: '入力', icon: LuPencil },
   { path: '/transactions', label: '記録', icon: LuClipboardList },
   { path: '/knowledge', label: 'ナレッジ', icon: LuBookOpen },

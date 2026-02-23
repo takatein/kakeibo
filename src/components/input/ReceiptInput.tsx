@@ -137,10 +137,10 @@ export function ReceiptInput({ onResult }: ReceiptInputProps) {
       date: today,
       memo: `レシート読取: ${mockReceiptData.items.map(i => i.name).join(', ')}`,
       confidence: 0.8,
-      alternativeCategories: [
-        { category: 'daily_goods', label: '日用品' },
-        { category: 'other', label: 'その他' },
-      ].filter(alt => alt.category !== category),
+      alternativeCategories: ([
+        { category: 'daily_goods' as Category, label: '日用品' },
+        { category: 'other' as Category, label: 'その他' },
+      ] as { category: Category; label: string }[]).filter(alt => alt.category !== category),
     }];
 
     setState('idle');

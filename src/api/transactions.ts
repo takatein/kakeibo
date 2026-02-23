@@ -1,7 +1,8 @@
-import type {
-  Transaction, MonthlySummary, ConfirmItem,
-  InputRequest, InputResponse, ConfirmRequest,
-  Category, CATEGORY_LABELS,
+import {
+  CATEGORY_LABELS,
+  type Transaction, type MonthlySummary, type ConfirmItem,
+  type InputRequest, type InputResponse, type ConfirmRequest,
+  type Category,
 } from '../types';
 import { generateId } from '../utils/id';
 import { formatDate, formatMonth } from '../utils/format';
@@ -174,7 +175,7 @@ export async function getMonthlySummary(month?: string): Promise<MonthlySummary>
   const prevTotal = prevTxns.reduce((sum, t) => sum + t.amount, 0);
 
   // カテゴリ別集計
-  const { CATEGORY_LABELS: labels } = require('../types');
+  const labels = CATEGORY_LABELS;
   const categoryMap = new Map<string, { amount: number; count: number }>();
   for (const t of txns) {
     const existing = categoryMap.get(t.category) || { amount: 0, count: 0 };

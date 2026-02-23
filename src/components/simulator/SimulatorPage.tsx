@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { LuAlertTriangle } from 'react-icons/lu';
+import { LuTriangleAlert } from 'react-icons/lu';
 import { PageHeader } from '../layout/PageHeader';
 import { getFamilySettings } from '../../api/family-settings';
 import { getFixedCosts, getFixedCostAtAge } from '../../api/fixed-costs';
@@ -353,7 +353,7 @@ export function SimulatorPage() {
           className="mb-4 p-4 flex items-start gap-3"
           style={{ backgroundColor: '#FDEBD0', borderRadius: '16px' }}
         >
-          <LuAlertTriangle size={20} color="#E67E22" className="shrink-0" />
+          <LuTriangleAlert size={20} color="#E67E22" className="shrink-0" />
           <div>
             <p className="text-sm font-bold" style={{ color: '#E67E22' }}>{w.age}歳</p>
             <p className="text-xs mt-0.5" style={{ color: '#92400E' }}>{w.message}</p>

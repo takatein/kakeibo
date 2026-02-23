@@ -13,7 +13,7 @@ const ALL_CATEGORIES = Object.keys(CATEGORY_LABELS) as Category[];
 export function EditTransactionModal({ transaction, onSave, onClose }: EditTransactionModalProps) {
   const [amount, setAmount] = useState(String(transaction.amount));
   const [category, setCategory] = useState<Category>(transaction.category);
-  const [storeName, setStoreName] = useState(transaction.storeName || '');
+  const [storeName, setStoreName] = useState(transaction.shopName || '');
   const [memo, setMemo] = useState(transaction.memo || '');
   const [date, setDate] = useState(transaction.date);
 
@@ -24,7 +24,7 @@ export function EditTransactionModal({ transaction, onSave, onClose }: EditTrans
     onSave({
       amount: parsedAmount,
       category,
-      storeName: storeName || undefined,
+      shopName: storeName || undefined,
       memo: memo || undefined,
       date,
     });

@@ -11,10 +11,10 @@ import {
   LuStethoscope,
   LuLightbulb,
   LuShield,
-  LuHome,
+  LuHouse,
   LuCar,
   LuGamepad2,
-  LuMoreHorizontal,
+  LuEllipsis,
 } from 'react-icons/lu';
 import { CATEGORY_COLORS, type CategoryBreakdown } from '../../types';
 import { formatCurrency } from '../../utils/format';
@@ -32,10 +32,10 @@ const CATEGORY_ICONS: Record<string, IconType> = {
   medical: LuStethoscope,
   utility: LuLightbulb,
   insurance: LuShield,
-  loan: LuHome,
+  loan: LuHouse,
   car: LuCar,
   hobby: LuGamepad2,
-  other: LuMoreHorizontal,
+  other: LuEllipsis,
 };
 
 const FIXED_CATEGORIES = ['utility', 'insurance', 'loan', 'education'];
@@ -67,7 +67,7 @@ export function CategoryChart({ breakdown, onViewDetail }: CategoryChartProps) {
         {breakdown.slice(0, 6).map((item) => {
           const isFixed = FIXED_CATEGORIES.includes(item.category);
           const barPercent = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
-          const Icon = CATEGORY_ICONS[item.category] || LuMoreHorizontal;
+          const Icon = CATEGORY_ICONS[item.category] || LuEllipsis;
 
           return (
             <div key={item.category} className={isFixed ? 'opacity-75' : ''}>
