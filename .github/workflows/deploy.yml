@@ -37,10 +37,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: npm install
 
       - name: Type check
         run: npx tsc -b
@@ -78,7 +77,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -88,7 +86,7 @@ jobs:
 
       - name: Install CDK dependencies
         working-directory: infra
-        run: npm ci
+        run: npm install
 
       - name: CDK diff (preview)
         working-directory: infra
