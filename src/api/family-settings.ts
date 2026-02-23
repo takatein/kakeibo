@@ -1,4 +1,5 @@
 import type { FamilySettings } from '../types';
+import { safeGetJson } from '../utils/storage';
 
 const STORAGE_KEY = 'kakeibo_family_settings';
 
@@ -31,8 +32,7 @@ const DEFAULT_SETTINGS: FamilySettings = {
 /** 家族設定を取得 */
 export async function getFamilySettings(): Promise<FamilySettings> {
   // TODO: return apiClient.get<FamilySettings>('/family-settings');
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : DEFAULT_SETTINGS;
+  return safeGetJson<FamilySettings>(STORAGE_KEY, DEFAULT_SETTINGS);
 }
 
 /** 家族設定を更新 */

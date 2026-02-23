@@ -1,32 +1,23 @@
-name: Deploy to AWS
+name: Deploy to GitHub Pages
 
 on:
   push:
     branches: ['main']
   workflow_dispatch:
-    inputs:
-      skip_cdk:
-        description: 'Skip CDK deploy (frontend only)'
-        required: false
-        default: 'false'
-        type: boolean
 
 permissions:
   contents: read
-  id-token: write  # OIDC token 取得に必要
+  pages: write
+  id-token: write
 
 concurrency:
-  group: 'deploy-${{ github.ref }}'
+  group: 'pages'
   cancel-in-progress: true
 
 env:
-  AWS_REGION: ap-northeast-1
   NODE_VERSION: '22'
 
 jobs:
-  # ========================================
-  # 1. ビルド
-  # ========================================
   build:
     runs-on: ubuntu-latest
     steps:
@@ -38,136 +29,30 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
 
-      - name: Install frontend dependencies
+      - name: Install dependencies
         run: npm install
 
       - name: Type check
         run: npx tsc -b
-        continue-on-error: true
 
-      - name: Build frontend
+      - name: Build
         run: npx vite build
-        env:
-          VITE_USE_MOCK: 'false'
 
-      - name: Upload frontend artifact
-        uses: actions/upload-artifact@v4
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: frontend-dist
           path: ./dist
-          retention-days: 1
 
-  # ========================================
-  # 2. CDK デプロイ（インフラ）
-  # ========================================
-  deploy-infra:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     needs: build
-    if: ${{ github.event.inputs.skip_cdk != 'true' }}
-    outputs:
-      api_url: ${{ steps.cdk-outputs.outputs.api_url }}
-      cloudfront_url: ${{ steps.cdk-outputs.outputs.cloudfront_url }}
-      frontend_bucket: ${{ steps.cdk-outputs.outputs.frontend_bucket }}
-      distribution_id: ${{ steps.cdk-outputs.outputs.distribution_id }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Install CDK dependencies
-        working-directory: infra
-        run: npm install
-
-      - name: CDK diff (preview)
-        working-directory: infra
-        run: npx cdk diff 2>&1 || true
-
-      - name: CDK deploy
-        working-directory: infra
-        run: npx cdk deploy --require-approval never --outputs-file cdk-outputs.json
-
-      - name: Extract CDK outputs
-        id: cdk-outputs
-        working-directory: infra
-        run: |
-          cat cdk-outputs.json
-          API_URL=$(jq -r '.KakeiboStack.ApiUrl // empty' cdk-outputs.json)
-          CF_URL=$(jq -r '.KakeiboStack.CloudFrontUrl // empty' cdk-outputs.json)
-          BUCKET=$(jq -r '.KakeiboStack.FrontendBucketName // empty' cdk-outputs.json)
-          DIST_ID=$(jq -r '.KakeiboStack.DistributionId // empty' cdk-outputs.json)
-          echo "api_url=${API_URL}" >> "$GITHUB_OUTPUT"
-          echo "cloudfront_url=${CF_URL}" >> "$GITHUB_OUTPUT"
-          echo "frontend_bucket=${BUCKET}" >> "$GITHUB_OUTPUT"
-          echo "distribution_id=${DIST_ID}" >> "$GITHUB_OUTPUT"
-
-  # ========================================
-  # 3. フロントエンド S3 デプロイ + CloudFront 無効化
-  # ========================================
-  deploy-frontend:
-    runs-on: ubuntu-latest
-    needs: [build, deploy-infra]
-    if: ${{ always() && needs.build.result == 'success' }}
-    steps:
-      - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Download frontend artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: frontend-dist
-          path: ./dist
-
-      - name: Sync to S3
-        run: |
-          BUCKET="${{ needs.deploy-infra.outputs.frontend_bucket }}"
-          if [ -z "$BUCKET" ]; then
-            # deploy-infra がスキップされた場合は Secrets から取得
-            BUCKET="${{ secrets.FRONTEND_BUCKET }}"
-          fi
-          if [ -z "$BUCKET" ]; then
-            echo "Error: FRONTEND_BUCKET not available"
-            exit 1
-          fi
-          echo "Deploying to s3://${BUCKET}"
-          aws s3 sync ./dist "s3://${BUCKET}" \
-            --delete \
-            --cache-control "public, max-age=31536000, immutable" \
-            --exclude "index.html" \
-            --exclude "*.json"
-          # index.html と manifest は短いキャッシュ
-          aws s3 cp ./dist/index.html "s3://${BUCKET}/index.html" \
-            --cache-control "public, max-age=0, must-revalidate"
-
-      - name: Invalidate CloudFront cache
-        run: |
-          DIST_ID="${{ needs.deploy-infra.outputs.distribution_id }}"
-          if [ -z "$DIST_ID" ] || [ "$DIST_ID" = "None" ]; then
-            DIST_ID="${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}"
-          fi
-          if [ -n "$DIST_ID" ] && [ "$DIST_ID" != "None" ]; then
-            echo "Invalidating CloudFront distribution: ${DIST_ID}"
-            aws cloudfront create-invalidation \
-              --distribution-id "$DIST_ID" \
-              --paths "/*"
-          else
-            echo "Warning: No CloudFront distribution ID available, skipping invalidation"
-          fi
-
-      - name: Deploy summary
-        run: |
-          echo "## Deploy Complete" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Frontend: ${{ needs.deploy-infra.outputs.cloudfront_url }}" >> "$GITHUB_STEP_SUMMARY"
-          echo "- API: ${{ needs.deploy-infra.outputs.api_url }}" >> "$GITHUB_STEP_SUMMARY"
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

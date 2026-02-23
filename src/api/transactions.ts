@@ -7,6 +7,7 @@ import {
 import { generateId } from '../utils/id';
 import { formatDate, formatMonth } from '../utils/format';
 import { matchPattern } from '../utils/pattern-analyzer';
+import { safeGetJson } from '../utils/storage';
 import type { PatternKnowledge, ContextKnowledge } from '../types';
 
 const STORAGE_KEY = 'kakeibo_transactions';
@@ -18,8 +19,7 @@ const FAMILY_ID = 'demo-family'; // TODO: Cognito familyIdから取得
 // ========================================
 
 function getStoredTransactions(): Transaction[] {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  return safeGetJson<Transaction[]>(STORAGE_KEY, []);
 }
 
 function saveStoredTransactions(txns: Transaction[]): void {
@@ -159,8 +159,7 @@ export async function getMonthlySummary(month?: string): Promise<MonthlySummary>
   const totalExpense = fixedCostsTotal + variableCostsTotal;
 
   // 収入は家族設定から取得
-  const settingsStr = localStorage.getItem('kakeibo_family_settings');
-  const settings = settingsStr ? JSON.parse(settingsStr) : null;
+  const settings = safeGetJson<Record<string, any> | null>('kakeibo_family_settings', null);
   const totalIncome = settings
     ? (settings.income?.selfMonthlyNet || 0) +
       (settings.income?.spouseMonthlyNet || 0) +
@@ -291,13 +290,11 @@ function mockCategorize(input: string): MockResult {
   let confidence = 0.65;
 
   // 1. 承認済みパターンマッチ（最高優先度 §5-2）
-  const patternsStr = localStorage.getItem('kakeibo_patterns');
-  const patterns: PatternKnowledge[] = patternsStr ? JSON.parse(patternsStr) : [];
+  const patterns = safeGetJson<PatternKnowledge[]>('kakeibo_patterns', []);
   const patternMatch = matchPattern(input, amount, patterns);
 
   // 2. コンテキストルールマッチ（§5-1 店舗→カテゴリ）
-  const contextStr = localStorage.getItem('kakeibo_context_rules');
-  const context: ContextKnowledge = contextStr ? JSON.parse(contextStr) : { shopToCategory: {}, keywordToCategory: {} };
+  const context = safeGetJson<ContextKnowledge>('kakeibo_context_rules', { shopToCategory: {}, keywordToCategory: {} });
 
   if (patternMatch) {
     // パターンマッチが最優先

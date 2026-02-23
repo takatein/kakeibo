@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { AuthUser } from '../types';
+import { safeGetJson } from '../utils/storage';
 
 interface AuthState {
   user: AuthUser | null;
@@ -26,9 +27,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // 起動時にローカルストレージから復元
   useEffect(() => {
-    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
-    if (stored) {
-      const user = JSON.parse(stored) as AuthUser;
+    const user = safeGetJson<AuthUser | null>(AUTH_STORAGE_KEY, null);
+    if (user) {
       setState({ user, isLoading: false, isAuthenticated: true });
     } else {
       setState(prev => ({ ...prev, isLoading: false }));

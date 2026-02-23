@@ -1,5 +1,6 @@
 import type { PatternKnowledge, ContextKnowledge, Transaction } from '../types';
 import { detectPatterns, extractContextRules } from '../utils/pattern-analyzer';
+import { safeGetJson } from '../utils/storage';
 
 const PATTERNS_KEY = 'kakeibo_patterns';
 const CONTEXT_KEY = 'kakeibo_context_rules';
@@ -11,8 +12,7 @@ const TRANSACTIONS_KEY = 'kakeibo_transactions';
 // ========================================
 
 function getStoredPatterns(): PatternKnowledge[] {
-  const stored = localStorage.getItem(PATTERNS_KEY);
-  return stored ? JSON.parse(stored) : [];
+  return safeGetJson<PatternKnowledge[]>(PATTERNS_KEY, []);
 }
 
 function savePatterns(patterns: PatternKnowledge[]): void {
@@ -20,8 +20,7 @@ function savePatterns(patterns: PatternKnowledge[]): void {
 }
 
 function getStoredContext(): ContextKnowledge {
-  const stored = localStorage.getItem(CONTEXT_KEY);
-  return stored ? JSON.parse(stored) : { shopToCategory: {}, keywordToCategory: {} };
+  return safeGetJson<ContextKnowledge>(CONTEXT_KEY, { shopToCategory: {}, keywordToCategory: {} });
 }
 
 function saveContext(context: ContextKnowledge): void {
@@ -84,8 +83,7 @@ export async function runPatternAnalysis(): Promise<{
   totalPatterns: number;
 }> {
   // 取引データを取得
-  const txnStr = localStorage.getItem(TRANSACTIONS_KEY);
-  const transactions: Transaction[] = txnStr ? JSON.parse(txnStr) : [];
+  const transactions = safeGetJson<Transaction[]>(TRANSACTIONS_KEY, []);
 
   if (transactions.length < 3) {
     return { newPatterns: 0, totalPatterns: getStoredPatterns().length };
@@ -119,8 +117,7 @@ export async function runPatternAnalysis(): Promise<{
 
 /** コンテキストルールを取引履歴から再構築 */
 async function rebuildContextRules(): Promise<void> {
-  const txnStr = localStorage.getItem(TRANSACTIONS_KEY);
-  const transactions: Transaction[] = txnStr ? JSON.parse(txnStr) : [];
+  const transactions = safeGetJson<Transaction[]>(TRANSACTIONS_KEY, []);
   const context = extractContextRules(transactions);
   saveContext(context);
 }

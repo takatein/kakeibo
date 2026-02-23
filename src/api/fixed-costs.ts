@@ -1,5 +1,6 @@
 import type { FixedCost, AgeTrigger } from '../types';
 import { generateId } from '../utils/id';
+import { safeGetJson } from '../utils/storage';
 
 const STORAGE_KEY = 'kakeibo_fixed_costs';
 const FAMILY_ID = 'demo-family';
@@ -10,8 +11,7 @@ const FAMILY_ID = 'demo-family';
 // ========================================
 
 function getStoredFixedCosts(): FixedCost[] {
-  const stored = localStorage.getItem(STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
+  return safeGetJson<FixedCost[]>(STORAGE_KEY, []);
 }
 
 function saveFixedCosts(costs: FixedCost[]): void {
